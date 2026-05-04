@@ -1,65 +1,178 @@
-import Image from "next/image";
+export const dynamic = "force-dynamic";
 
-export default function Home() {
+import Link from "next/link";
+import { Suspense } from "react";
+import { Plus, BookOpen } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { RecipeCard } from "@/components/RecipeCard";
+import { RecipeFilters } from "@/components/RecipeFilters";
+import { listRecipes } from "@/lib/db";
+import { RECIPE_TYPES } from "@/lib/categories";
+import type { RecipeType } from "@/lib/categories";
+
+const PAGE_SIZE = 20;
+
+interface HomeProps {
+  searchParams: Promise<{
+    offset?: string;
+    type?: string;
+    categories?: string;
+    ingredients?: string;
+  }>;
+}
+
+export default async function Home({ searchParams }: HomeProps) {
+  const {
+    offset: offsetParam,
+    type: rawType,
+    categories: rawCategories,
+    ingredients: rawIngredients,
+  } = await searchParams;
+  const offset = Math.max(0, parseInt(offsetParam ?? "0", 10) || 0);
+
+  const type = RECIPE_TYPES.includes(rawType as RecipeType)
+    ? (rawType as RecipeType)
+    : undefined;
+  const categories = rawCategories?.split(",").filter(Boolean);
+  const ingredients = rawIngredients
+    ?.split(",")
+    .map((i) => i.toLowerCase())
+    .filter(Boolean);
+
+  const recipes = await listRecipes(PAGE_SIZE, offset, {
+    type,
+    categories,
+    ingredients,
+  });
+  const hasPrev = offset > 0;
+  const hasNext = recipes.length === PAGE_SIZE;
+  const isFirstPage = offset === 0;
+
+  // Build pagination URLs preserving active filters
+  const filterQuery = [
+    type && `type=${type}`,
+    rawCategories && `categories=${rawCategories}`,
+    rawIngredients && `ingredients=${rawIngredients}`,
+  ]
+    .filter(Boolean)
+    .join("&");
+  const paginationBase = filterQuery ? `/?${filterQuery}&` : "/?";
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <main className="mx-auto w-full max-w-6xl px-4 py-8 space-y-6">
+      {/* Page header */}
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-1">
+          <h1 className="font-display text-3xl font-bold text-foreground">
+            Mis recetas
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="text-muted-foreground">
+            Todas tus recetas procesadas con IA.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+        <Button asChild size="lg" className="shrink-0 cursor-pointer">
+          <Link href="/recipes/new">
+            <Plus className="size-5" aria-hidden="true" />
+            Nueva receta
+          </Link>
+        </Button>
+      </header>
+
+      {/* Filters + Grid layout */}
+      <div className="flex flex-col lg:flex-row gap-8">
+        {/* Sidebar filters */}
+        <aside className="w-full lg:w-72 shrink-0">
+          <Suspense>
+            <RecipeFilters />
+          </Suspense>
+        </aside>
+
+        {/* Recipe grid */}
+        <div className="flex-1 min-w-0 space-y-6">
+          {recipes.length === 0 ? (
+            <div className="flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-border py-24 gap-6 text-center">
+              <div className="flex size-20 items-center justify-center rounded-2xl bg-primary/10">
+                <BookOpen className="size-10 text-primary" aria-hidden="true" />
+              </div>
+              <div className="space-y-2">
+                <p className="text-2xl font-semibold">
+                  {type || categories?.length || ingredients?.length
+                    ? "Sin resultados para estos filtros"
+                    : "Sin recetas todavía"}
+                </p>
+                <p className="text-muted-foreground text-lg">
+                  {type || categories?.length || ingredients?.length
+                    ? "Prueba a cambiar o limpiar los filtros."
+                    : "Importa tu primera receta desde texto, imagen o YouTube."}
+                </p>
+              </div>
+              {!type && !categories?.length && !ingredients?.length && (
+                <Button
+                  asChild
+                  size="lg"
+                  className="text-lg cursor-pointer shadow-lg shadow-primary/20"
+                >
+                  <Link href="/recipes/new">
+                    <Plus className="size-5" aria-hidden="true" />
+                    Añadir la primera
+                  </Link>
+                </Button>
+              )}
+            </div>
+          ) : (
+            <>
+              {isFirstPage && (
+                <p className="text-base text-muted-foreground font-medium">
+                  {recipes.length} receta{recipes.length !== 1 ? "s" : ""}
+                  {hasNext ? "+" : ""}
+                </p>
+              )}
+              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
+                {recipes.map((recipe, i) => (
+                  <RecipeCard key={recipe.id} recipe={recipe} index={i} />
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* Pagination */}
+          {(hasPrev || hasNext) && (
+            <nav
+              className="flex justify-between items-center pt-6"
+              aria-label="Paginación"
+            >
+              {hasPrev ? (
+                <Button
+                  asChild
+                  variant="outline"
+                  size="lg"
+                  className="text-base cursor-pointer"
+                >
+                  <Link
+                    href={`${paginationBase}offset=${Math.max(0, offset - PAGE_SIZE)}`}
+                  >
+                    ← Anteriores
+                  </Link>
+                </Button>
+              ) : (
+                <div />
+              )}
+              {hasNext && (
+                <Button
+                  asChild
+                  variant="outline"
+                  size="lg"
+                  className="text-base cursor-pointer"
+                >
+                  <Link href={`${paginationBase}offset=${offset + PAGE_SIZE}`}>
+                    Siguientes →
+                  </Link>
+                </Button>
+              )}
+            </nav>
+          )}
         </div>
-      </main>
-    </div>
+      </div>
+    </main>
   );
 }
