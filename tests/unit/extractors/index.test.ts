@@ -1,14 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const extractText = vi.fn(async (input: string) => `text:${input}`)
-const extractDocx = vi.fn(async (input: string | Buffer) => `docx:${Buffer.isBuffer(input) ? 'buffer' : input}`)
-const extractImage = vi.fn(async (input: string) => `image:${input}`)
-const extractYoutube = vi.fn(async (input: string) => `youtube:${input}`)
+const mocks = vi.hoisted(() => ({
+  extractText: vi.fn(async (input: string) => `text:${input}`),
+  extractDocx: vi.fn(async (input: string | Buffer) => `docx:${Buffer.isBuffer(input) ? 'buffer' : input}`),
+  extractImage: vi.fn(async (input: string) => `image:${input}`),
+  extractYoutube: vi.fn(async (input: string) => `youtube:${input}`),
+}))
 
-vi.mock('@/lib/extractors/text', () => ({ extract: extractText }))
-vi.mock('@/lib/extractors/docx', () => ({ extract: extractDocx }))
-vi.mock('@/lib/extractors/image', () => ({ extract: extractImage }))
-vi.mock('@/lib/extractors/youtube', () => ({ extract: extractYoutube }))
+vi.mock('@/lib/extractors/text', () => ({ extract: mocks.extractText }))
+vi.mock('@/lib/extractors/docx', () => ({ extract: mocks.extractDocx }))
+vi.mock('@/lib/extractors/image', () => ({ extract: mocks.extractImage }))
+vi.mock('@/lib/extractors/youtube', () => ({ extract: mocks.extractYoutube }))
 
 import { extract } from '@/lib/extractors'
 
@@ -21,8 +23,8 @@ describe('extractor router', () => {
     const result = await extract(Buffer.from('docx'))
 
     expect(result).toBe('docx:buffer')
-    expect(extractDocx).toHaveBeenCalledOnce()
-    expect(extractText).not.toHaveBeenCalled()
+    expect(mocks.extractDocx).toHaveBeenCalledOnce()
+    expect(mocks.extractText).not.toHaveBeenCalled()
   })
 
   it('routes YouTube URLs to the youtube extractor', async () => {
@@ -31,7 +33,7 @@ describe('extractor router', () => {
     const result = await extract(input)
 
     expect(result).toBe(`youtube:${input}`)
-    expect(extractYoutube).toHaveBeenCalledWith(input)
+    expect(mocks.extractYoutube).toHaveBeenCalledWith(input)
   })
 
   it('routes .docx paths to the docx extractor', async () => {
@@ -40,7 +42,7 @@ describe('extractor router', () => {
     const result = await extract(input)
 
     expect(result).toBe(`docx:${input}`)
-    expect(extractDocx).toHaveBeenCalledWith(input)
+    expect(mocks.extractDocx).toHaveBeenCalledWith(input)
   })
 
   it('routes supported image extensions to the image extractor', async () => {
@@ -49,7 +51,7 @@ describe('extractor router', () => {
     const result = await extract(input)
 
     expect(result).toBe(`image:${input}`)
-    expect(extractImage).toHaveBeenCalledWith(input)
+    expect(mocks.extractImage).toHaveBeenCalledWith(input)
   })
 
   it('falls back to the text extractor for plain strings', async () => {
@@ -58,6 +60,6 @@ describe('extractor router', () => {
     const result = await extract(input)
 
     expect(result).toBe(`text:${input}`)
-    expect(extractText).toHaveBeenCalledWith(input)
+    expect(mocks.extractText).toHaveBeenCalledWith(input)
   })
 })

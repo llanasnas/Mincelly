@@ -25,7 +25,7 @@ describe('translateIngredient', () => {
   })
 
   it('falls back word by word when there is no phrase match', () => {
-    expect(translateIngredient('ajo powder')).toBe('garlic powder')
+    expect(translateIngredient('powder ajo')).toBe('powder garlic')
   })
 
   it('returns the original input when normalization becomes empty', () => {

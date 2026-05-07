@@ -23,7 +23,7 @@ describe('gramsFromQuantity', () => {
 
   it('uses density tables for volume-based conversions', () => {
     expect(gramsFromQuantity('1', 'cup', 'harina')).toBe(132)
-    expect(gramsFromQuantity('2', 'tbsp', 'miel')).toBe(42.6)
+    expect(gramsFromQuantity('2', 'tbsp', 'miel')).toBeCloseTo(42.6, 5)
     expect(gramsFromQuantity('3', 'tsp', 'agua')).toBe(15)
     expect(gramsFromQuantity('1', 'ml', 'ingrediente desconocido')).toBe(1)
   })

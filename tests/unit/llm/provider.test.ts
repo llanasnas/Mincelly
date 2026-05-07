@@ -1,13 +1,16 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { anthropicProvider } from '@/lib/llm/anthropic'
-import { ollamaProvider } from '@/lib/llm/ollama'
-import { openaiProvider } from '@/lib/llm/openai'
 
 const ORIGINAL_ENV = { ...process.env }
 
 async function loadProviderModule() {
   vi.resetModules()
-  return import('@/lib/llm/provider')
+  const [providerModule, anthropicModule, openaiModule, ollamaModule] = await Promise.all([
+    import('@/lib/llm/provider'),
+    import('@/lib/llm/anthropic'),
+    import('@/lib/llm/openai'),
+    import('@/lib/llm/ollama'),
+  ])
+  return { providerModule, anthropicModule, openaiModule, ollamaModule }
 }
 
 afterEach(() => {
@@ -17,17 +20,17 @@ afterEach(() => {
 
 describe('getLLMProviderByName', () => {
   it('returns the concrete provider implementations', async () => {
-    const { getLLMProviderByName } = await loadProviderModule()
+    const { providerModule, anthropicModule, openaiModule, ollamaModule } = await loadProviderModule()
 
-    expect(getLLMProviderByName('anthropic')).toBe(anthropicProvider)
-    expect(getLLMProviderByName('openai')).toBe(openaiProvider)
-    expect(getLLMProviderByName('ollama')).toBe(ollamaProvider)
+    expect(providerModule.getLLMProviderByName('anthropic')).toBe(anthropicModule.anthropicProvider)
+    expect(providerModule.getLLMProviderByName('openai')).toBe(openaiModule.openaiProvider)
+    expect(providerModule.getLLMProviderByName('ollama')).toBe(ollamaModule.ollamaProvider)
   })
 
   it('throws for unsupported provider names', async () => {
-    const { getLLMProviderByName } = await loadProviderModule()
+    const { providerModule } = await loadProviderModule()
 
-    expect(() => getLLMProviderByName('none' as never)).toThrow(/Unknown provider/)
+    expect(() => providerModule.getLLMProviderByName('none' as never)).toThrow(/Unknown provider/)
   })
 })
 
@@ -36,11 +39,11 @@ describe('isProviderAvailable', () => {
     delete process.env.ANTHROPIC_API_KEY
     delete process.env.OPENAI_API_KEY
 
-    const { isProviderAvailable } = await loadProviderModule()
+    const { providerModule } = await loadProviderModule()
 
-    expect(isProviderAvailable('anthropic')).toBe(false)
-    expect(isProviderAvailable('openai')).toBe(false)
-    expect(isProviderAvailable('ollama')).toBe(true)
+    expect(providerModule.isProviderAvailable('anthropic')).toBe(false)
+    expect(providerModule.isProviderAvailable('openai')).toBe(false)
+    expect(providerModule.isProviderAvailable('ollama')).toBe(true)
   })
 })
 
@@ -49,9 +52,9 @@ describe('getAvailableProviders', () => {
     process.env.ENABLED_PROVIDERS = 'openai, ollama, none'
     delete process.env.OPENAI_API_KEY
 
-    const { getAvailableProviders } = await loadProviderModule()
+    const { providerModule } = await loadProviderModule()
 
-    expect(getAvailableProviders()).toEqual([{ id: 'ollama', label: 'Ollama (local)' }])
+    expect(providerModule.getAvailableProviders()).toEqual([{ id: 'ollama', label: 'Ollama (local)' }])
   })
 
   it('falls back to LLM_PROVIDER when ENABLED_PROVIDERS is not set', async () => {
@@ -59,9 +62,9 @@ describe('getAvailableProviders', () => {
     process.env.LLM_PROVIDER = 'openai'
     process.env.OPENAI_API_KEY = 'key'
 
-    const { getAvailableProviders } = await loadProviderModule()
+    const { providerModule } = await loadProviderModule()
 
-    expect(getAvailableProviders()).toEqual([{ id: 'openai', label: 'ChatGPT (OpenAI)' }])
+    expect(providerModule.getAvailableProviders()).toEqual([{ id: 'openai', label: 'ChatGPT (OpenAI)' }])
   })
 })
 
@@ -70,12 +73,12 @@ describe('getLLMProvider', () => {
     process.env.ENABLED_PROVIDERS = 'openai,ollama'
     delete process.env.OPENAI_API_KEY
 
-    const { getLLMProvider } = await loadProviderModule()
+    const { providerModule, ollamaModule } = await loadProviderModule()
 
-    const first = getLLMProvider()
-    const second = getLLMProvider()
+    const first = providerModule.getLLMProvider()
+    const second = providerModule.getLLMProvider()
 
-    expect(first).toBe(ollamaProvider)
+    expect(first).toBe(ollamaModule.ollamaProvider)
     expect(second).toBe(first)
   })
 
@@ -84,8 +87,8 @@ describe('getLLMProvider', () => {
     process.env.LLM_PROVIDER = 'anthropic'
     delete process.env.ANTHROPIC_API_KEY
 
-    const { getLLMProvider } = await loadProviderModule()
+    const { providerModule, anthropicModule } = await loadProviderModule()
 
-    expect(getLLMProvider()).toBe(anthropicProvider)
+    expect(providerModule.getLLMProvider()).toBe(anthropicModule.anthropicProvider)
   })
 })

@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { RecipeProcessingError } from '@/lib/errors'
 
-const fetchTranscript = vi.fn()
+const mocks = vi.hoisted(() => ({
+  fetchTranscript: vi.fn(),
+}))
 
 vi.mock('youtube-transcript', () => ({
   YoutubeTranscript: {
-    fetchTranscript,
+    fetchTranscript: mocks.fetchTranscript,
   },
 }))
 
@@ -22,11 +24,11 @@ describe('youtube extractor', () => {
       message: expect.stringContaining('URL de YouTube no válida'),
     })
 
-    expect(fetchTranscript).not.toHaveBeenCalled()
+    expect(mocks.fetchTranscript).not.toHaveBeenCalled()
   })
 
   it('joins transcript segments into plain text', async () => {
-    fetchTranscript.mockResolvedValueOnce([
+    mocks.fetchTranscript.mockResolvedValueOnce([
       { text: 'Ingredientes para la receta' },
       { text: 'mezclar todo y hornear despacio' },
     ])
@@ -37,7 +39,7 @@ describe('youtube extractor', () => {
   })
 
   it('maps disabled subtitles errors to a user-friendly message', async () => {
-    fetchTranscript.mockRejectedValueOnce(new Error('Transcript is disabled for this video'))
+    mocks.fetchTranscript.mockRejectedValueOnce(new Error('Transcript is disabled for this video'))
 
     await expect(extract('https://youtu.be/dQw4w9WgXcQ')).rejects.toEqual(
       expect.objectContaining({
@@ -48,7 +50,7 @@ describe('youtube extractor', () => {
   })
 
   it('treats empty transcript responses as unavailable', async () => {
-    fetchTranscript.mockResolvedValueOnce([])
+    mocks.fetchTranscript.mockResolvedValueOnce([])
 
     await expect(extract('https://youtu.be/dQw4w9WgXcQ')).rejects.toEqual(
       expect.objectContaining({
@@ -59,7 +61,7 @@ describe('youtube extractor', () => {
   })
 
   it('rejects transcripts that are too short to parse as a recipe', async () => {
-    fetchTranscript.mockResolvedValueOnce([{ text: 'Muy corta' }])
+    mocks.fetchTranscript.mockResolvedValueOnce([{ text: 'Muy corta' }])
 
     const promise = extract('https://youtu.be/dQw4w9WgXcQ')
 
@@ -71,7 +73,7 @@ describe('youtube extractor', () => {
   })
 
   it('classifies network-style upstream failures', async () => {
-    fetchTranscript.mockRejectedValueOnce(new Error('network timeout'))
+    mocks.fetchTranscript.mockRejectedValueOnce(new Error('network timeout'))
 
     await expect(extract('https://youtu.be/dQw4w9WgXcQ')).rejects.toMatchObject({
       code: 'TRANSCRIPT_NOT_AVAILABLE',
