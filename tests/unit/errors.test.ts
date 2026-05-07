@@ -3,7 +3,8 @@ import { RecipeProcessingError, publicMessage } from '@/lib/errors'
 
 const ORIGINAL_NODE_ENV = process.env.NODE_ENV
 const setNodeEnv = (value: string | undefined) => {
-  ;(process.env as Record<string, string | undefined>).NODE_ENV = value
+  const env = process.env as Record<string, string | undefined>
+  env.NODE_ENV = value
 }
 
 afterEach(() => {
