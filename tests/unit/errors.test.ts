@@ -1,5 +1,11 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { RecipeProcessingError, publicMessage } from '@/lib/errors'
+
+const ORIGINAL_NODE_ENV = process.env.NODE_ENV
+
+afterEach(() => {
+  process.env.NODE_ENV = ORIGINAL_NODE_ENV
+})
 
 describe('RecipeProcessingError', () => {
   it('preserves the error code and custom name', () => {
@@ -14,30 +20,21 @@ describe('RecipeProcessingError', () => {
 
 describe('publicMessage', () => {
   it('returns the real error message outside production', () => {
-    const previous = process.env.NODE_ENV
     process.env.NODE_ENV = 'test'
 
     expect(publicMessage(new Error('debug me'))).toBe('debug me')
-
-    process.env.NODE_ENV = previous
   })
 
   it('returns the fallback for non-Error values outside production', () => {
-    const previous = process.env.NODE_ENV
     process.env.NODE_ENV = 'development'
 
     expect(publicMessage('bad value', 'safe fallback')).toBe('safe fallback')
-
-    process.env.NODE_ENV = previous
   })
 
   it('always returns the fallback in production', () => {
-    const previous = process.env.NODE_ENV
     process.env.NODE_ENV = 'production'
 
     expect(publicMessage(new Error('secret details'), 'safe fallback')).toBe('safe fallback')
     expect(publicMessage('bad value')).toBe('Internal server error')
-
-    process.env.NODE_ENV = previous
   })
 })

@@ -18,7 +18,7 @@ afterEach(() => {
   vi.resetModules()
 })
 
-describe('getLLMProviderByName', () => {
+describe.sequential('getLLMProviderByName', () => {
   it('returns the concrete provider implementations', async () => {
     const { providerModule, anthropicModule, openaiModule, ollamaModule } = await loadProviderModule()
 
@@ -34,7 +34,7 @@ describe('getLLMProviderByName', () => {
   })
 })
 
-describe('isProviderAvailable', () => {
+describe.sequential('isProviderAvailable', () => {
   it('checks required API keys and always allows ollama', async () => {
     delete process.env.ANTHROPIC_API_KEY
     delete process.env.OPENAI_API_KEY
@@ -47,7 +47,7 @@ describe('isProviderAvailable', () => {
   })
 })
 
-describe('getAvailableProviders', () => {
+describe.sequential('getAvailableProviders', () => {
   it('uses ENABLED_PROVIDERS and filters unavailable or none entries', async () => {
     process.env.ENABLED_PROVIDERS = 'openai, ollama, none'
     delete process.env.OPENAI_API_KEY
@@ -68,7 +68,7 @@ describe('getAvailableProviders', () => {
   })
 })
 
-describe('getLLMProvider', () => {
+describe.sequential('getLLMProvider', () => {
   it('returns the first available provider and caches it per active provider', async () => {
     process.env.ENABLED_PROVIDERS = 'openai,ollama'
     delete process.env.OPENAI_API_KEY
