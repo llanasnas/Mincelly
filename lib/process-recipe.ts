@@ -16,7 +16,7 @@ function loadSystemPrompt(): string {
   return readFileSync(join(process.cwd(), 'prompts', 'parse-recipe.md'), 'utf-8')
 }
 
-function extractJSON(text: string): string {
+export function extractJSON(text: string): string {
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/)
   if (fenced) return fenced[1].trim()
 
@@ -31,7 +31,7 @@ function extractJSON(text: string): string {
 
 // Small Ollama models sometimes wrap the recipe under a key like {"recipe":{...}}
 // or {"receta":{...}}. Unwrap one level if the root lacks a string title + array ingredients.
-function unwrapRecipe(parsed: unknown): unknown {
+export function unwrapRecipe(parsed: unknown): unknown {
   if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return parsed
   const obj = parsed as Record<string, unknown>
   const looksLikeRecipe = typeof obj.title === 'string' && Array.isArray(obj.ingredients)
@@ -50,7 +50,7 @@ function unwrapRecipe(parsed: unknown): unknown {
 //   - Alternative field names (recipeName → title, preparationSteps → steps, etc.)
 //   - ingredients as dict {"name": "qty unit"} → [{name, quantity, unit}]
 //   - steps as dict {"1": "instruction"} or array of strings → [{order, instruction}]
-function normalizeLLMOutput(obj: Record<string, unknown>): Record<string, unknown> {
+export function normalizeLLMOutput(obj: Record<string, unknown>): Record<string, unknown> {
   const out = { ...obj }
 
   // ── Field aliases ──────────────────────────────────────────────────────────
@@ -122,7 +122,7 @@ function normalizeLLMOutput(obj: Record<string, unknown>): Record<string, unknow
 
 // LLMs return null for absent optional fields; Zod .optional() only accepts undefined.
 // Also converts NaN to null since some LLMs return NaN instead of null.
-function stripNulls(value: unknown): unknown {
+export function stripNulls(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(stripNulls)
   if (value !== null && typeof value === 'object') {
     return Object.fromEntries(
@@ -136,7 +136,7 @@ function stripNulls(value: unknown): unknown {
 
 // Fix LLM error of embedding unit in quantity field (e.g. quantity:"1500 gr", unit:"gr").
 // After splitting, deduplicates unit vs quantity so display never shows "1500 gr gr".
-function normalizeIngredients(ingredients: Ingredient[]): Ingredient[] {
+export function normalizeIngredients(ingredients: Ingredient[]): Ingredient[] {
   return ingredients.map((ing) => {
     const qty = ing.quantity ?? ''
 
@@ -180,7 +180,7 @@ function emptyTotals(): Record<keyof NutritionData, number> {
   }
 }
 
-function aggregateAndPer100g(
+export function aggregateAndPer100g(
   totals: Record<keyof NutritionData, number>,
   totalGrams: number
 ): Record<keyof NutritionData, number> {

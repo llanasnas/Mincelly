@@ -5,8 +5,9 @@
 .claude/
 # GitHub Copilot / VS Code Copilot Chat skills
 .agents/
-.github/
 skills-lock.json
+#custom skill prompts 
+.github/prompts/*
 # OpenCode / Codex (OpenAI)
 .opencode/
 # Aider
