@@ -80,11 +80,12 @@ export function RecipeFilters() {
   // Fetch ingredient suggestions with debounce
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (!ingredientSearch.trim()) {
-      setIngredientSuggestions([]);
-      return;
-    }
+    const delay = ingredientSearch.trim() ? 300 : 0;
     debounceRef.current = setTimeout(async () => {
+      if (!ingredientSearch.trim()) {
+        setIngredientSuggestions([]);
+        return;
+      }
       try {
         const res = await fetch(
           `/api/categories?ingredientSearch=${encodeURIComponent(ingredientSearch)}`,
@@ -97,7 +98,7 @@ export function RecipeFilters() {
       } catch {
         // ignore
       }
-    }, 300);
+    }, delay);
   }, [ingredientSearch]);
 
   // Close suggestions on outside click
