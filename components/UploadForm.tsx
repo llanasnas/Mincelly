@@ -11,6 +11,7 @@ import {
   AlertCircle,
   Mic,
   Square,
+  ImageIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -92,6 +93,7 @@ export function UploadForm() {
   const [isRecording, setIsRecording] = useState(false);
   const [, startTransition] = useTransition();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const docInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null); // eslint-disable-line no-undef
 
   useEffect(() => {
@@ -363,51 +365,80 @@ export function UploadForm() {
 
         {tab === "file" && (
           <div id="tab-panel-file" role="tabpanel" aria-label="Subir archivo">
-            <label
-              htmlFor="recipe-file"
-              className="block text-base font-medium mb-2"
-            >
-              Archivo .docx o imagen
-            </label>
-            <div
-              onClick={() => fileInputRef.current?.click()}
-              onKeyDown={(e) =>
-                e.key === "Enter" && fileInputRef.current?.click()
-              }
-              tabIndex={0}
-              role="button"
-              aria-label="Seleccionar archivo"
-              className={[
-                "flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed",
-                "border-input bg-muted/50 px-6 py-12 cursor-pointer",
-                "transition-colors duration-150 hover:border-primary/60 hover:bg-primary/5",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-              ].join(" ")}
-            >
-              <Upload
-                className="size-10 text-muted-foreground"
-                aria-hidden="true"
-              />
-              {file ? (
-                <span className="text-lg font-medium text-primary">
-                  {file.name}
+            <p className="block text-base font-medium mb-3">Foto o documento</p>
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                onKeyDown={(e) =>
+                  e.key === "Enter" && fileInputRef.current?.click()
+                }
+                tabIndex={0}
+                role="button"
+                aria-label="Seleccionar imagen"
+                className={[
+                  "flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed",
+                  "px-4 py-8 cursor-pointer transition-colors duration-150",
+                  "hover:border-primary/60 hover:bg-primary/5",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  file && file.type.startsWith("image/")
+                    ? "border-primary bg-primary/5"
+                    : "border-input bg-muted/50",
+                ].join(" ")}
+              >
+                <ImageIcon
+                  className="size-8 text-muted-foreground"
+                  aria-hidden="true"
+                />
+                <span className="text-sm font-medium">Foto / imagen</span>
+                <span className="text-xs text-muted-foreground">
+                  .jpg, .png, .webp
                 </span>
-              ) : (
-                <>
-                  <span className="text-base font-medium">
-                    Haz clic para seleccionar
-                  </span>
-                  <span className="text-sm text-muted-foreground">
-                    .docx, .jpg, .png, .webp
-                  </span>
-                </>
-              )}
+              </div>
+              <div
+                onClick={() => docInputRef.current?.click()}
+                onKeyDown={(e) =>
+                  e.key === "Enter" && docInputRef.current?.click()
+                }
+                tabIndex={0}
+                role="button"
+                aria-label="Seleccionar documento"
+                className={[
+                  "flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed",
+                  "px-4 py-8 cursor-pointer transition-colors duration-150",
+                  "hover:border-primary/60 hover:bg-primary/5",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  file && !file.type.startsWith("image/")
+                    ? "border-primary bg-primary/5"
+                    : "border-input bg-muted/50",
+                ].join(" ")}
+              >
+                <FileText
+                  className="size-8 text-muted-foreground"
+                  aria-hidden="true"
+                />
+                <span className="text-sm font-medium">Documento</span>
+                <span className="text-xs text-muted-foreground">
+                  .docx, .pdf
+                </span>
+              </div>
             </div>
+            {file && (
+              <p className="text-sm text-center text-primary font-medium truncate">
+                {file.name}
+              </p>
+            )}
             <input
               ref={fileInputRef}
-              id="recipe-file"
               type="file"
-              accept=".docx,.jpg,.jpeg,.png,.gif,.webp,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              accept="image/*"
+              className="sr-only"
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              aria-hidden="true"
+            />
+            <input
+              ref={docInputRef}
+              type="file"
+              accept=".docx,.pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf"
               className="sr-only"
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
               aria-hidden="true"
