@@ -407,7 +407,7 @@ export function UploadForm() {
               ref={fileInputRef}
               id="recipe-file"
               type="file"
-              accept=".docx,.jpg,.jpeg,.png,.gif,.webp,image/*,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              accept=".docx,.jpg,.jpeg,.png,.gif,.webp,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
               className="sr-only"
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
               aria-hidden="true"
