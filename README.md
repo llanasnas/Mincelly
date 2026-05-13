@@ -128,6 +128,44 @@ OLLAMA_VISION_MODEL=llama3.2-vision:11b  # for image parsing
 
 > **No API key?** Set `LLM_PROVIDER=none` to use the built-in heuristic parser. It works with plain text recipes that have "Ingredientes" / "Preparación" sections.
 
+### Authentication (Google OAuth + email allowlist)
+
+Optional gate that protects recipe pages and processing endpoints. When disabled
+(`FORCE_LOGIN=false`, the default), the app behaves exactly as before.
+
+```env
+# When true → /, /recipes/* and /api/{process,recipes,upload-image,categories}
+# require a valid Google session. Landing-style public pages remain open.
+FORCE_LOGIN=false
+
+# Comma-separated email allowlist. Empty/unset → any Google account is accepted.
+# Emails outside this list get an Access Denied screen and their session is cleared.
+ALLOWED_EMAILS=alice@gmail.com,bob@example.com
+
+# OAuth credentials from https://console.cloud.google.com/apis/credentials
+GOOGLE_CLIENT_ID=...apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=...
+
+# HMAC secret used to sign the session JWT (cookie). Min 32 chars.
+# Generate with: openssl rand -base64 48
+AUTH_SECRET=replace-me-with-a-long-random-string
+
+# Optional. Defaults to the request origin in dev.
+# APP_URL=https://mincely.example.com
+# AUTH_REDIRECT_URL=https://mincely.example.com/api/auth/callback
+```
+
+**Google Cloud Console setup**
+
+1. Create / open a project at https://console.cloud.google.com
+2. APIs & Services → Credentials → Create credentials → OAuth client ID
+3. Application type: **Web application**
+4. Authorized redirect URIs:
+   - `http://localhost:3000/api/auth/callback` (development)
+   - `https://your-domain.com/api/auth/callback` (production)
+5. Copy the Client ID + Secret into `.env.local`
+6. On the OAuth consent screen, add your test users (or publish the app)
+
 ### Optional
 
 ```env

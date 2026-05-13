@@ -4,6 +4,7 @@ import { ThemeProvider } from "next-themes";
 import { UtensilsCrossed } from "lucide-react";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeToggleClient } from "@/components/ThemeToggleClient";
+import { AuthMenu } from "@/components/AuthMenu";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -40,7 +41,10 @@ export default function RootLayout({
                   Mincely
                 </span>
               </Link>
-              <ThemeToggleClient />
+              <div className="flex items-center gap-2">
+                <AuthMenu />
+                <ThemeToggleClient />
+              </div>
             </div>
           </nav>
 
