@@ -194,8 +194,13 @@ export function UploadForm() {
     startTransition(async () => {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 55_000);
+      const startTime = Date.now();
       try {
-        const res = await fetch("/api/process", { method: "POST", body: fd, signal: controller.signal });
+        const res = await fetch("/api/process", {
+          method: "POST",
+          body: fd,
+          signal: controller.signal,
+        });
         clearTimeout(timeoutId);
         const data = await res.json();
 
@@ -214,7 +219,11 @@ export function UploadForm() {
       } catch (err) {
         clearTimeout(timeoutId);
         setStage("input");
-        const isTimeout = err instanceof Error && (err.name === "AbortError" || err.name === "TimeoutError");
+        const elapsed = Date.now() - startTime;
+        const isTimeout =
+          (err instanceof Error &&
+            (err.name === "AbortError" || err.name === "TimeoutError")) ||
+          elapsed >= 8_000;
         setProcessError({
           errorCode: "PARSING_FAILED",
           error: isTimeout

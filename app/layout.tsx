@@ -1,16 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import { ThemeProvider } from "next-themes";
-import { UtensilsCrossed } from "lucide-react";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeToggleClient } from "@/components/ThemeToggleClient";
 import { AuthMenu } from "@/components/AuthMenu";
+import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Mincely — Recetas con IA",
   description:
     "Convierte cualquier receta en datos estructurados con inteligencia artificial",
+  icons: {
+    icon: "/logo.png",
+    apple: "/logo.png",
+  },
 };
 
 export default function RootLayout({
@@ -34,9 +39,14 @@ export default function RootLayout({
                 href="/"
                 className="group flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
               >
-                <span className="flex size-8 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent text-white shadow-sm group-hover:shadow-md group-hover:shadow-primary/30 transition-shadow duration-200">
-                  <UtensilsCrossed className="size-4" aria-hidden="true" />
-                </span>
+                <Image
+                  src="/logo.png"
+                  alt="Mincely logo"
+                  width={42}
+                  height={32}
+                  className="size-8 rounded-xl"
+                  priority
+                />
                 <span className="font-display text-xl font-bold text-gradient">
                   Mincely
                 </span>
@@ -50,6 +60,7 @@ export default function RootLayout({
 
           {children}
           <Toaster richColors position="bottom-center" />
+          <ServiceWorkerRegistration />
         </ThemeProvider>
       </body>
     </html>
