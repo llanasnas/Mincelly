@@ -1,5 +1,7 @@
 // Mammoth (via docx extractor) only runs in Node.js runtime.
 export const runtime = 'nodejs'
+// Allow up to 60s — docx upload on slow mobile + LLM can exceed the 10s Hobby default
+export const maxDuration = 60
 
 import { NextRequest, NextResponse } from 'next/server'
 import { extract as extractDocx } from '@/lib/extractors/docx'

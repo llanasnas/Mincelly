@@ -192,8 +192,11 @@ export function UploadForm() {
 
     setStage("processing");
     startTransition(async () => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 55_000);
       try {
-        const res = await fetch("/api/process", { method: "POST", body: fd });
+        const res = await fetch("/api/process", { method: "POST", body: fd, signal: controller.signal });
+        clearTimeout(timeoutId);
         const data = await res.json();
 
         if (!res.ok) {
@@ -208,11 +211,15 @@ export function UploadForm() {
 
         setRecipe(data as Recipe);
         setStage("preview");
-      } catch {
+      } catch (err) {
+        clearTimeout(timeoutId);
         setStage("input");
+        const isTimeout = err instanceof Error && (err.name === "AbortError" || err.name === "TimeoutError");
         setProcessError({
           errorCode: "PARSING_FAILED",
-          error: "Error de red. Inténtalo de nuevo.",
+          error: isTimeout
+            ? "La solicitud tardó demasiado. Prueba con una conexión WiFi o un archivo más pequeño."
+            : "Error de red. Inténtalo de nuevo.",
         });
       }
     });
@@ -430,7 +437,7 @@ export function UploadForm() {
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
+              accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
               className="sr-only"
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
               aria-hidden="true"
@@ -438,7 +445,7 @@ export function UploadForm() {
             <input
               ref={docInputRef}
               type="file"
-              accept=".docx,.pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf"
+              accept=".docx,.pdf,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
               className="sr-only"
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
               aria-hidden="true"

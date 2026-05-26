@@ -30,7 +30,7 @@ export const openaiProvider: LLMClient = {
     if (!apiKey) throw new Error('[openai] OPENAI_API_KEY is not set')
 
     const client = new OpenAI({ apiKey })
-    const model = options.model ?? process.env.OPENAI_MODEL ?? 'gpt-4o-mini'
+    const model = options.model ?? process.env.OPENAI_MODEL ?? 'gpt-4.1-mini'
 
     const response = await client.chat.completions.create({
       model,
