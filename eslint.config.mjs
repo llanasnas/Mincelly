@@ -12,7 +12,16 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Local agent skills — not part of the app source
+    ".agents/**",
+    ".claude/**",
   ]),
+  {
+    rules: {
+      // Allow _-prefixed variables as intentional "discard" placeholders
+      "@typescript-eslint/no-unused-vars": ["warn", { varsIgnorePattern: "^_", argsIgnorePattern: "^_" }],
+    },
+  },
 ]);
 
 export default eslintConfig;

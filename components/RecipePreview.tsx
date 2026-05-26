@@ -4,7 +4,6 @@ import { useState, useCallback, useRef } from "react";
 import Image from "next/image";
 import {
   ChefHat,
-  Clock,
   Users,
   AlertTriangle,
   CheckCircle,

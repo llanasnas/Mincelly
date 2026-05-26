@@ -381,7 +381,6 @@ const FIELD_LABELS: Record<keyof Nutrition, string> = {
 }
 
 async function fillNutrition(recipe: Recipe, providerName?: LLMProvider): Promise<Recipe> {
-  const servings = recipe.servings ?? 4
   const usdaResult = await fetchUSDAPerIngredient(recipe)
   const { nutrition: usdaNutrition, allFound } = nutritionFromTotals(
     usdaResult, recipe.ingredients

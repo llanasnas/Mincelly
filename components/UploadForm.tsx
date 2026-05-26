@@ -94,7 +94,7 @@ export function UploadForm() {
   const [, startTransition] = useTransition();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
-  const recognitionRef = useRef<SpeechRecognition | null>(null); // eslint-disable-line no-undef
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
 
   useEffect(() => {
     fetch("/api/providers")
