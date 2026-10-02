@@ -4,15 +4,15 @@ import { parseQuantity, parseIngredientQuantity } from '@/lib/nutrition/parser'
 describe('parseQuantity', () => {
     // ── Null / empty ──────────────────────────────────────────────────────────
     it('returns empty quantity for null', () => {
-        expect(parseQuantity(null)).toEqual({ quantity: '', unit: null, original: '' })
+        expect(parseQuantity(null)).toEqual({ quantity: '', unit: null, rawUnit: null, original: '' })
     })
 
     it('returns empty quantity for empty string', () => {
-        expect(parseQuantity('')).toEqual({ quantity: '', unit: null, original: '' })
+        expect(parseQuantity('')).toEqual({ quantity: '', unit: null, rawUnit: null, original: '' })
     })
 
     it('returns empty quantity for whitespace-only string', () => {
-        expect(parseQuantity('   ')).toEqual({ quantity: '', unit: null, original: '   ' })
+        expect(parseQuantity('   ')).toEqual({ quantity: '', unit: null, rawUnit: null, original: '   ' })
     })
 
     // ── Plain numbers ─────────────────────────────────────────────────────────
@@ -165,9 +165,14 @@ describe('parseQuantity', () => {
 
     // ── Unknown units passthrough ─────────────────────────────────────────────
     it('keeps unknown unit as-is (lowercase)', () => {
-        const result = parseQuantity('1 pizca')
+        const result = parseQuantity('1 Sobre')
         expect(result.quantity).toBe('1')
-        expect(result.unit).toBe('pizca')
+        expect(result.unit).toBe('sobre')
+    })
+
+    it('exposes the unit as written alongside the canonical one', () => {
+        expect(parseQuantity('2 Tazas')).toMatchObject({ unit: 'cup', rawUnit: 'tazas' })
+        expect(parseQuantity('1 pizca')).toMatchObject({ unit: 'pinch', rawUnit: 'pizca' })
     })
 
     // ── preserves original ────────────────────────────────────────────────────

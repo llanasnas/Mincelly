@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import {
     extractJSON,
+    parseLLMJson,
     unwrapRecipe,
     normalizeLLMOutput,
     stripNulls,
     normalizeIngredients,
-    aggregateAndPer100g,
-} from '@/lib/process-recipe'
+} from '@/lib/llm-output'
 
 describe('extractJSON', () => {
     it('returns plain JSON as-is', () => {
@@ -238,31 +238,49 @@ describe('normalizeIngredients', () => {
     })
 })
 
-describe('aggregateAndPer100g', () => {
-    it('scales values to per-100g when totalGrams > 0', () => {
-        const totals = { calories: 200, protein: 10, fat: 5, saturatedFat: 2, carbohydrates: 20, sugar: 5, fiber: 2, water: 10, dryExtract: 5, sodium: 0.5 }
-        const result = aggregateAndPer100g(totals, 200)
-        // 200g total → scale by 100/200 = 0.5
-        expect(result.calories).toBe(100)
-        expect(result.protein).toBe(5)
+describe('normalizeIngredients — display units', () => {
+    it('keeps the recipe wording for non-metric units', () => {
+        const result = normalizeIngredients([{ name: 'harina', quantity: '2 tazas' }])
+        expect(result[0]).toMatchObject({ quantity: '2', unit: 'tazas' })
     })
 
-    it('uses identity scale when totalGrams is 0 (unknown weight)', () => {
-        const totals = { calories: 300, protein: 10, fat: 5, saturatedFat: 2, carbohydrates: 20, sugar: 5, fiber: 2, water: 10, dryExtract: 5, sodium: 0.5 }
-        const result = aggregateAndPer100g(totals, 0)
-        expect(result.calories).toBe(300)
+    it('normalises metric abbreviations', () => {
+        const result = normalizeIngredients([{ name: 'leche', quantity: '250 mililitros' }])
+        expect(result[0]).toMatchObject({ quantity: '250', unit: 'ml' })
     })
 
-    it('rounds calories to integer', () => {
-        const totals = { calories: 333, protein: 0, fat: 0, saturatedFat: 0, carbohydrates: 0, sugar: 0, fiber: 0, water: 0, dryExtract: 0, sodium: 0 }
-        const result = aggregateAndPer100g(totals, 300)
-        expect(Number.isInteger(result.calories)).toBe(true)
+    it('keeps the nutrition hints that came with the ingredient', () => {
+        const result = normalizeIngredients([{ name: 'harina', quantity: '200 g', nameEn: 'flour', grams: 200 }])
+        expect(result[0]).toMatchObject({ nameEn: 'flour', grams: 200 })
+    })
+})
+
+describe('parseLLMJson', () => {
+    it('parses fenced JSON', () => {
+        expect(parseLLMJson('```json\n{"a":1}\n```')).toEqual({ a: 1 })
     })
 
-    it('rounds other nutrients to 1 decimal', () => {
-        const totals = { calories: 0, protein: 10, fat: 0, saturatedFat: 0, carbohydrates: 0, sugar: 0, fiber: 0, water: 0, dryExtract: 0, sodium: 0 }
-        const result = aggregateAndPer100g(totals, 300)
-        // 10 * (100/300) = 3.333... → rounds to 3.3
-        expect(result.protein).toBe(3.3)
+    it('returns undefined instead of throwing on invalid JSON', () => {
+        expect(parseLLMJson('Lo siento, no puedo ayudarte')).toBeUndefined()
+        expect(parseLLMJson('{"title": "Cortado a medi')).toBeUndefined()
+    })
+})
+
+describe('normalizeLLMOutput — engine-owned fields', () => {
+    it('drops a nutritionMeta block invented by the model', () => {
+        const result = normalizeLLMOutput({ title: 'X', ingredients: [], steps: [], nutritionMeta: { source: 'usda' } })
+        expect('nutritionMeta' in result).toBe(false)
+    })
+})
+
+describe('unwrapRecipe — aliased field names', () => {
+    it('unwraps a wrapper whose recipe uses Spanish field names', () => {
+        const inner = { nombre: 'Gazpacho', ingredientes: { tomate: '1 kg' }, pasos: ['Triturar'] }
+        expect(unwrapRecipe({ receta: inner })).toBe(inner)
+    })
+
+    it('does not mistake an ingredients dictionary for the recipe', () => {
+        const recipe = { nombre: 'Gazpacho', ingredientes: { tomate: '1 kg' } }
+        expect(unwrapRecipe(recipe)).toBe(recipe)
     })
 })

@@ -1,5 +1,9 @@
-// Minimal ES→EN map for common recipe ingredients. USDA API only matches English.
-// Not exhaustive — falls back to original text on miss.
+import { foodKey, stripAccents } from './normalize'
+
+// Spanish → English dictionary for common recipe ingredients. USDA FoodData
+// Central only indexes English names, so this is the fallback translation when
+// the LLM did not provide one (non-AI mode, or a manually edited ingredient).
+// Not exhaustive — unknown words pass through untouched.
 const TERMS: Record<string, string> = {
   // Aceites / grasas
   'aceite de oliva': 'olive oil',
@@ -196,30 +200,86 @@ const TERMS: Record<string, string> = {
   'chocolate': 'chocolate',
   'cacao': 'cocoa',
   'cacao en polvo': 'cocoa powder',
+
+  // Varios
+  'zumo': 'juice',
+  'jugo': 'juice',
+  'jarabe': 'syrup',
+  'ralladura': 'zest',
+  'girasol': 'sunflower',
+  'salsa': 'sauce',
+  'puré': 'puree',
+  'semilla': 'seed',
+  'semillas': 'seed',
+  'coco': 'coconut',
+  'vainilla': 'vanilla',
+  'levadura': 'yeast',
+  'gelatina': 'gelatin',
+  'pavo': 'turkey',
+  'conejo': 'rabbit',
+  'pato': 'duck',
+  'espárrago': 'asparagus',
+  'espárragos': 'asparagus',
+  'alcachofa': 'artichoke',
+  'alcachofas': 'artichoke',
+  'remolacha': 'beet',
+  'acelga': 'chard',
+  'acelgas': 'chard',
+  'boniato': 'sweet potato',
+  'ron': 'rum',
+  'coñac': 'cognac',
+  'queso fresco': 'fresh cheese',
+  'queso de cabra': 'goat cheese',
 }
 
-// Modifiers we strip before lookup so "tomate fresco picado" → "tomate"
-const MODIFIERS = /\b(fresco|frescos|fresca|frescas|congelado|congelada|congelados|congeladas|seco|seca|secos|secas|maduro|madura|crudo|cruda|cocido|cocida|hervido|hervida|asado|asada|al horno|frito|frita|picado|picada|rallado|rallada|laminado|laminada|cortado|cortada|en rodajas|en cubos|en dados|en juliana|sin piel|sin hueso|sin sal|al gusto|opcional|natural|en lata|enlatado|enlatada|concentrado|concentrada|extra virgen|virgen|integral)\b/gi
+const DICTIONARY = new Map(Object.entries(TERMS).map(([es, en]) => [stripAccents(es), en]))
 
+/** Lookup key for an ingredient name — see `foodKey`. */
 export function normalizeForLookup(name: string): string {
-  return name.toLowerCase().replace(MODIFIERS, '').replace(/\s+/g, ' ').trim()
+  return foodKey(name)
 }
 
+/** A phrase the dictionary knows as a whole, or as an "X de Y" compound. */
+function translatePhrase(key: string): string | undefined {
+  const whole = DICTIONARY.get(key)
+  if (whole) return whole
+
+  // "X de Y": English puts the qualifier first. Only when both halves are known —
+  // translating just the head would turn almond flour into plain flour.
+  const compound = key.match(/^(.+?) de (.+)$/)
+  if (!compound) return undefined
+  const head = DICTIONARY.get(compound[1])
+  const qualifier = DICTIONARY.get(compound[2])
+  return head && qualifier ? `${qualifier} ${head}` : undefined
+}
+
+/**
+ * Best-effort English name for an ingredient, suitable as a USDA search query.
+ *
+ *  1. Whole phrase:        "aceite de oliva"        → "olive oil"
+ *  2. "X de Y" compounds:  "harina de almendra"     → "almond flour"
+ *  3. Leading phrase:      "harina de trigo blanca" → "wheat flour"
+ *  4. Word by word, leaving unknown words as they are.
+ */
 export function translateIngredient(name: string): string {
-  const normalized = normalizeForLookup(name)
-  if (!normalized) return name
+  const key = foodKey(name)
+  if (!key) return name
 
-  // Whole-phrase match first
-  if (TERMS[normalized]) return TERMS[normalized]
+  const phrase = translatePhrase(key)
+  if (phrase) return phrase
 
-  // Try removing trailing words (e.g. "harina de trigo blanca" → "harina de trigo" → "harina")
-  const words = normalized.split(' ')
-  for (let len = words.length; len > 0; len--) {
-    const phrase = words.slice(0, len).join(' ')
-    if (TERMS[phrase]) return TERMS[phrase]
+  // Longest known leading phrase, as long as what we drop is a plain descriptor
+  // ("… tostada") and not a "de …" complement that changes which food this is.
+  const words = key.split(' ')
+  for (let len = words.length - 1; len > 0; len--) {
+    if (words[len] === 'de') continue
+    const leading = translatePhrase(words.slice(0, len).join(' '))
+    if (leading) return leading
   }
 
-  // Word-by-word fallback
-  const translated = words.map((w) => TERMS[w] ?? w).join(' ')
-  return translated
+  return words
+    .filter((w) => w !== 'de')
+    .map((w) => DICTIONARY.get(w) ?? w)
+    .join(' ')
 }
+

@@ -19,6 +19,14 @@ describe('RecipeProcessingError', () => {
     expect(error.code).toBe('PARSING_FAILED')
     expect(error.name).toBe('RecipeProcessingError')
     expect(error.message).toBe('Could not parse recipe')
+    expect(error.detail).toBeUndefined()
+  })
+
+  it('keeps technical detail separate from the user-facing message', () => {
+    const error = new RecipeProcessingError('AI_EXTRACTION_FAILED', 'El modelo no respondió', 'HTTP 529 overloaded')
+
+    expect(error.message).toBe('El modelo no respondió')
+    expect(error.detail).toBe('HTTP 529 overloaded')
   })
 })
 

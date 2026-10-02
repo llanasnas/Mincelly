@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseText } from '@/lib/parsers/text'
+import { parseIngredientLine, parseText } from '@/lib/parsers/text'
 import { RecipeProcessingError } from '@/lib/errors'
 
 describe('parseText', () => {
@@ -43,8 +43,8 @@ describe('parseText', () => {
     it('parses ingredients section', () => {
         const result = parseText('Receta\nIngredientes:\n- 4 huevos\n- 200g harina\nPreparación:\n- Mezclar')
         expect(result.ingredients).toHaveLength(2)
-        expect(result.ingredients[0].name).toBe('4 huevos')
-        expect(result.ingredients[1].name).toBe('200g harina')
+        expect(result.ingredients[0]).toMatchObject({ quantity: '4', name: 'huevos' })
+        expect(result.ingredients[1]).toMatchObject({ quantity: '200', unit: 'g', name: 'harina' })
     })
 
     it('parses steps section', () => {
@@ -131,20 +131,20 @@ describe('parseText', () => {
     })
 
     // ── Warnings ─────────────────────────────────────────────────────────────
-    it('always includes "Parsed without AI" warning', () => {
+    it('always warns that the recipe was parsed without AI', () => {
         const result = parseText('R\nIngredientes:\n- azúcar\nPreparación:\n- mezclar')
-        expect(result.warnings.some(w => w.includes('Parsed without AI'))).toBe(true)
+        expect(result.warnings.some(w => w.includes('sin IA'))).toBe(true)
     })
 
     it('adds warning when no ingredients detected', () => {
         const result = parseText('R\nPreparación:\n- mezclar todo')
-        expect(result.warnings.some(w => w.toLowerCase().includes('ingredient'))).toBe(true)
+        expect(result.warnings.some(w => w.toLowerCase().includes('ingredientes'))).toBe(true)
         expect(result.ingredients).toHaveLength(0)
     })
 
     it('adds warning when no steps detected', () => {
         const result = parseText('R\nIngredientes:\n- azúcar')
-        expect(result.warnings.some(w => w.toLowerCase().includes('step'))).toBe(true)
+        expect(result.warnings.some(w => w.toLowerCase().includes('pasos'))).toBe(true)
         expect(result.steps).toHaveLength(0)
     })
 
@@ -162,5 +162,41 @@ describe('parseText', () => {
     it('returns empty tags array', () => {
         const result = parseText('R\nIngredientes:\n- azúcar\nPreparación:\n- mezclar')
         expect(result.tags).toEqual([])
+    })
+})
+
+describe('parseIngredientLine', () => {
+    it('splits quantity, unit and name', () => {
+        expect(parseIngredientLine('200 g de harina')).toMatchObject({ quantity: '200', unit: 'g', name: 'harina' })
+        expect(parseIngredientLine('2 cucharadas de aceite de oliva')).toMatchObject({
+            quantity: '2', unit: 'cucharadas', name: 'aceite de oliva',
+        })
+        expect(parseIngredientLine('1 1/2 tazas de leche')).toMatchObject({ quantity: '1 1/2', unit: 'tazas', name: 'leche' })
+    })
+
+    it('treats the first word as the ingredient when it is not a unit', () => {
+        expect(parseIngredientLine('2 huevos')).toMatchObject({ quantity: '2', name: 'huevos' })
+        expect(parseIngredientLine('2 huevos').unit).toBeUndefined()
+    })
+
+    it('handles a unit glued to the number', () => {
+        expect(parseIngredientLine('500ml caldo')).toMatchObject({ quantity: '500', unit: 'ml', name: 'caldo' })
+    })
+
+    it('leaves lines without a quantity untouched', () => {
+        const ing = parseIngredientLine('sal al gusto')
+        expect(ing.name).toBe('sal al gusto')
+        expect(ing.quantity).toBeUndefined()
+    })
+
+    it('moves trailing remarks into notes', () => {
+        expect(parseIngredientLine('1 cebolla, picada fina')).toMatchObject({ name: 'cebolla', notes: 'picada fina' })
+        expect(parseIngredientLine('100 g mantequilla (a temperatura ambiente)')).toMatchObject({
+            name: 'mantequilla', notes: 'a temperatura ambiente',
+        })
+    })
+
+    it('fills the normalised name used by the ingredient filter', () => {
+        expect(parseIngredientLine('3 Tomates').normalized).toBe('tomates')
     })
 })
