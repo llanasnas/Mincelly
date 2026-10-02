@@ -6,6 +6,7 @@ import {
   getRedirectUri,
   getAppUrl,
   isEmailAllowed,
+  safeReturnPath,
 } from "@/lib/auth/config"
 import {
   ACCESS_DENIED_COOKIE,
@@ -27,14 +28,9 @@ interface TokenResponse {
 
 interface UserInfo {
   email?: string
-  email_verified?: boolean
+  email_verified?: boolean | string
   name?: string
   picture?: string
-}
-
-function safeReturn(target: string | undefined, appUrl: string): string {
-  if (!target || !target.startsWith("/") || target.startsWith("//")) return "/"
-  return `${appUrl}${target}`
 }
 
 export async function GET(req: Request) {
@@ -102,7 +98,9 @@ export async function GET(req: Request) {
   }
 
   const email = info.email?.toLowerCase().trim()
-  if (!email || info.email_verified === false) {
+  // Only accept addresses Google has verified — the allowlist is keyed on email.
+  const verified = info.email_verified === true || info.email_verified === "true"
+  if (!email || !verified) {
     return NextResponse.redirect(`${appUrl}/login?error=no_email`)
   }
 
@@ -129,7 +127,7 @@ export async function GET(req: Request) {
     picture: info.picture ?? "",
   })
 
-  const res = NextResponse.redirect(safeReturn(returnTo, appUrl))
+  const res = NextResponse.redirect(`${appUrl}${safeReturnPath(returnTo)}`)
   res.headers.append(
     "Set-Cookie",
     `${SESSION_COOKIE}=${jwt}; ${sessionCookieAttributes(SESSION_MAX_AGE_SECONDS)}`,

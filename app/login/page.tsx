@@ -5,7 +5,7 @@ import { redirect } from "next/navigation"
 import { ShieldCheck, LogIn } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { getCurrentUser } from "@/lib/auth/guard"
-import { isForceLogin } from "@/lib/auth/config"
+import { isForceLogin, safeReturnPath } from "@/lib/auth/config"
 
 interface LoginPageProps {
   searchParams: Promise<{ returnTo?: string; error?: string }>
@@ -21,10 +21,10 @@ const ERROR_MESSAGES: Record<string, string> = {
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const { returnTo, error } = await searchParams
+  const safeReturnTo = safeReturnPath(returnTo)
   const user = await getCurrentUser()
-  if (user) redirect(returnTo && returnTo.startsWith("/") ? returnTo : "/")
+  if (user) redirect(safeReturnTo)
 
-  const safeReturnTo = returnTo && returnTo.startsWith("/") && !returnTo.startsWith("//") ? returnTo : "/"
   const startUrl = `/api/auth/google?returnTo=${encodeURIComponent(safeReturnTo)}`
   const errorMsg = error ? ERROR_MESSAGES[error] ?? "Error de autenticación." : null
 
@@ -43,7 +43,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         </div>
 
         {errorMsg && (
-          <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          <div role="alert" className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
             {errorMsg}
           </div>
         )}

@@ -50,6 +50,18 @@ export function getAppUrl(req?: Request): string {
   return "http://localhost:3000"
 }
 
+/**
+ * Sanitises a post-login destination so it can only point inside this app.
+ * Rejects absolute URLs and the protocol-relative forms browsers treat as one
+ * ("//evil.com", "/\evil.com", or the same hidden behind a tab or newline,
+ * which browsers strip) — the classic open-redirect vectors.
+ */
+export function safeReturnPath(target: string | null | undefined): string {
+  if (!target || !target.startsWith("/") || target.startsWith("//")) return "/"
+  if (/[\\\u0000-\u001f]/.test(target)) return "/"
+  return target
+}
+
 export function getRedirectUri(req?: Request): string {
   const env = process.env.AUTH_REDIRECT_URL
   if (env) return env
