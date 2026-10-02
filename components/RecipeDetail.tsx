@@ -1,209 +1,153 @@
-"use client";
-
 import Image from "next/image";
-import { motion, type Variants } from "framer-motion";
-import { Clock, Users, ChefHat, AlertTriangle, Euro } from "lucide-react";
+import {
+  Clock,
+  Users,
+  ChefHat,
+  AlertTriangle,
+  Euro,
+  Gauge,
+  ExternalLink,
+} from "lucide-react";
 import { ConfidenceBadge } from "@/components/ConfidenceBadge";
+import { IngredientList } from "@/components/IngredientList";
 import { NutritionTable } from "@/components/NutritionTable";
+import { RECIPE_TYPE_LABELS } from "@/lib/categories";
 import type { Recipe } from "@/lib/schema";
 
 interface RecipeDetailProps {
   recipe: Recipe;
 }
 
-const fadeUp: Variants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: (i: number) => ({
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.3, delay: i * 0.07, ease: "easeOut" },
-  }),
-};
+const DIFFICULTY_LABELS = {
+  easy: "Fácil",
+  medium: "Media",
+  hard: "Difícil",
+} as const;
+
+const euros = new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" });
+
+const sectionHeading = "font-display text-2xl font-bold mb-4";
 
 export function RecipeDetail({ recipe }: RecipeDetailProps) {
+  const labels = [
+    recipe.type && RECIPE_TYPE_LABELS[recipe.type],
+    ...recipe.categories,
+  ].filter(Boolean);
+  const hasMeta = !!(
+    recipe.prepTime ||
+    recipe.cookTime ||
+    recipe.totalTime ||
+    recipe.servings ||
+    recipe.difficulty ||
+    recipe.estimatedCost != null
+  );
+
   return (
-    <article className="max-w-2xl mx-auto space-y-10 pb-16">
-      {/* Hero image */}
+    <article className="mx-auto max-w-3xl space-y-10">
       {recipe.imageUrl && (
-        <motion.div
-          className="relative w-full aspect-[16/9] rounded-2xl overflow-hidden shadow-lg"
-          initial={{ opacity: 0, scale: 0.97 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.4, ease: "easeOut" }}
-        >
+        <div className="relative aspect-[16/9] w-full overflow-hidden rounded-2xl bg-muted">
           <Image
             src={recipe.imageUrl}
-            alt={recipe.title}
+            alt=""
             fill
             priority
             className="object-cover"
-            sizes="(max-width: 672px) 100vw, 672px"
+            sizes="(max-width: 768px) 100vw, 768px"
           />
-        </motion.div>
+        </div>
       )}
 
-      {/* Header */}
-      <motion.header
-        className="space-y-4"
-        initial="hidden"
-        animate="visible"
-        custom={0}
-        variants={fadeUp}
-      >
-        <h1 className="font-display text-4xl font-bold leading-tight text-gradient">
+      <header className="space-y-4">
+        <h1 className="font-display text-3xl font-bold leading-tight sm:text-4xl">
           {recipe.title}
         </h1>
         {recipe.description && (
-          <p className="text-lg text-muted-foreground leading-relaxed">
+          <p className="text-lg leading-relaxed text-muted-foreground">
             {recipe.description}
           </p>
         )}
-        <div className="flex flex-wrap gap-3 items-center">
-          <ConfidenceBadge confidence={recipe.confidence} />
+        <div className="flex flex-wrap items-center gap-2">
+          {labels.map((label) => (
+            <span
+              key={label}
+              className="rounded-full bg-secondary px-3 py-1 text-sm font-medium text-secondary-foreground"
+            >
+              {label}
+            </span>
+          ))}
           {recipe.cuisine && (
-            <span className="inline-flex items-center gap-1.5 text-base text-muted-foreground">
+            <span className="inline-flex items-center gap-1.5 px-1 text-sm text-muted-foreground">
               <ChefHat className="size-4" aria-hidden="true" />
               {recipe.cuisine}
             </span>
           )}
+          <ConfidenceBadge confidence={recipe.confidence} />
         </div>
-      </motion.header>
+      </header>
 
-      {/* Meta */}
-      {(recipe.prepTime ||
-        recipe.cookTime ||
-        recipe.totalTime ||
-        recipe.servings ||
-        recipe.estimatedCost) && (
-        <motion.section
-          aria-label="Tiempos y raciones"
-          className="grid grid-cols-2 sm:grid-cols-4 gap-4"
-          initial="hidden"
-          animate="visible"
-          custom={1}
-          variants={fadeUp}
-        >
-          {recipe.prepTime && (
-            <MetaTile
-              icon={<Clock className="size-5" />}
-              label="Preparación"
-              value={recipe.prepTime}
-            />
-          )}
-          {recipe.cookTime && (
-            <MetaTile
-              icon={<Clock className="size-5" />}
-              label="Cocción"
-              value={recipe.cookTime}
-            />
-          )}
-          {recipe.totalTime && (
-            <MetaTile
-              icon={<Clock className="size-5" />}
-              label="Total"
-              value={recipe.totalTime}
-            />
-          )}
-          {recipe.servings && (
-            <MetaTile
-              icon={<Users className="size-5" />}
-              label="Raciones"
-              value={String(recipe.servings)}
-            />
-          )}
-          {recipe.estimatedCost != null && (
-            <MetaTile
-              icon={<Euro className="size-5" />}
-              label={
-                recipe.servings
-                  ? `€/ración (${recipe.servings})`
-                  : "Coste estimado"
-              }
-              value={
-                recipe.servings
-                  ? `${(recipe.estimatedCost / recipe.servings).toFixed(2)} €`
-                  : `${recipe.estimatedCost.toFixed(2)} €`
-              }
-              subtitle={
-                recipe.servings
-                  ? `Total: ${recipe.estimatedCost.toFixed(2)} €`
-                  : undefined
-              }
-            />
-          )}
-        </motion.section>
+      {hasMeta && (
+      <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        {recipe.prepTime && (
+          <MetaTile icon={Clock} label="Preparación" value={recipe.prepTime} />
+        )}
+        {recipe.cookTime && (
+          <MetaTile icon={Clock} label="Cocción" value={recipe.cookTime} />
+        )}
+        {recipe.totalTime && (
+          <MetaTile icon={Clock} label="Tiempo total" value={recipe.totalTime} />
+        )}
+        {recipe.servings && (
+          <MetaTile icon={Users} label="Raciones" value={String(recipe.servings)} />
+        )}
+        {recipe.difficulty && (
+          <MetaTile
+            icon={Gauge}
+            label="Dificultad"
+            value={DIFFICULTY_LABELS[recipe.difficulty]}
+          />
+        )}
+        {recipe.estimatedCost != null && (
+          <MetaTile
+            icon={Euro}
+            label="Coste estimado"
+            value={euros.format(recipe.estimatedCost)}
+            hint={
+              recipe.servings
+                ? `${euros.format(recipe.estimatedCost / recipe.servings)} por ración`
+                : undefined
+            }
+          />
+        )}
+      </dl>
       )}
 
-      {/* Ingredients */}
-      <motion.section
-        aria-labelledby="ingredients-heading"
-        initial="hidden"
-        animate="visible"
-        custom={2}
-        variants={fadeUp}
-      >
-        <h2
-          id="ingredients-heading"
-          className="font-display text-2xl font-bold mb-5 flex items-center gap-3"
-        >
-          <span
-            className="inline-block w-1 h-7 rounded-full bg-gradient-to-b from-primary to-accent"
-            aria-hidden="true"
-          />
+      <section aria-labelledby="ingredients-heading">
+        <h2 id="ingredients-heading" className={sectionHeading}>
           Ingredientes
         </h2>
-        <ul className="space-y-3">
-          {recipe.ingredients.map((ing, i) => (
-            <li key={i} className="flex items-baseline gap-2 text-lg">
-              <span
-                className="size-2.5 rounded-full bg-gradient-to-br from-primary to-accent mt-2 shrink-0 shadow-sm shadow-primary/30"
-                aria-hidden="true"
-              />
-              <span>
-                {[ing.quantity, ing.unit, ing.name].filter(Boolean).join(" ")}
-                {ing.notes && (
-                  <span className="text-muted-foreground text-base">
-                    {" "}
-                    ({ing.notes})
-                  </span>
-                )}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </motion.section>
+        <IngredientList
+          ingredients={recipe.ingredients}
+          servings={recipe.servings}
+        />
+      </section>
 
-      {/* Steps */}
-      <motion.section
-        aria-labelledby="steps-heading"
-        initial="hidden"
-        animate="visible"
-        custom={3}
-        variants={fadeUp}
-      >
-        <h2
-          id="steps-heading"
-          className="font-display text-2xl font-bold mb-5 flex items-center gap-3"
-        >
-          <span
-            className="inline-block w-1 h-7 rounded-full bg-gradient-to-b from-primary to-accent"
-            aria-hidden="true"
-          />
-          Pasos
+      <section aria-labelledby="steps-heading">
+        <h2 id="steps-heading" className={sectionHeading}>
+          Preparación
         </h2>
         <ol className="space-y-6">
-          {recipe.steps.map((step) => (
-            <li key={step.order} className="flex gap-5">
+          {recipe.steps.map((step, i) => (
+            <li key={i} className="flex gap-4">
               <span
-                className="flex-none flex size-9 items-center justify-center rounded-full bg-gradient-to-br from-primary to-accent text-white font-bold text-base shadow-sm shadow-primary/30"
-                aria-label={`Paso ${step.order}`}
+                className="flex size-9 flex-none items-center justify-center rounded-full bg-primary text-base font-bold text-primary-foreground tabular-nums"
+                aria-hidden="true"
               >
                 {step.order}
               </span>
-              <div className="space-y-1">
+              <div className="min-w-0 space-y-1 pt-0.5">
                 <p className="text-lg leading-relaxed">{step.instruction}</p>
                 {step.duration && (
-                  <p className="text-sm text-muted-foreground flex items-center gap-1">
+                  <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
                     <Clock className="size-3.5" aria-hidden="true" />
                     {step.duration}
                   </p>
@@ -212,95 +156,95 @@ export function RecipeDetail({ recipe }: RecipeDetailProps) {
             </li>
           ))}
         </ol>
-      </motion.section>
+      </section>
 
-      {/* Nutrition */}
       {recipe.nutrition && (
-        <motion.section
-          aria-labelledby="nutrition-heading"
-          initial="hidden"
-          animate="visible"
-          custom={4}
-          variants={fadeUp}
-        >
-          <h2
-            id="nutrition-heading"
-            className="font-display text-2xl font-bold mb-5 flex items-center gap-3"
-          >
-            <span
-              className="inline-block w-1 h-7 rounded-full bg-gradient-to-b from-primary to-accent"
-              aria-hidden="true"
-            />
+        <section aria-labelledby="nutrition-heading">
+          <h2 id="nutrition-heading" className={sectionHeading}>
             Información nutricional
           </h2>
-          <NutritionTable nutrition={recipe.nutrition} />
-        </motion.section>
+          <NutritionTable
+            nutrition={recipe.nutrition}
+            meta={recipe.nutritionMeta}
+            servings={recipe.servings}
+          />
+        </section>
       )}
 
-      {/* Tags */}
-      {recipe.tags.length > 0 && (
-        <motion.section
-          aria-label="Etiquetas"
-          initial="hidden"
-          animate="visible"
-          custom={5}
-          variants={fadeUp}
-        >
-          <div className="flex flex-wrap gap-2">
-            {recipe.tags.map((tag) => (
-              <span
-                key={tag}
-                className="rounded-full bg-secondary text-secondary-foreground px-4 py-1.5 text-base"
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
-        </motion.section>
+      {(recipe.tags.length > 0 || recipe.sourceUrl) && (
+        <footer className="space-y-4">
+          {recipe.tags.length > 0 && (
+            <ul aria-label="Etiquetas" className="flex flex-wrap gap-2">
+              {recipe.tags.map((tag) => (
+                <li
+                  key={tag}
+                  className="rounded-full border border-border px-3 py-1 text-sm text-muted-foreground"
+                >
+                  {tag}
+                </li>
+              ))}
+            </ul>
+          )}
+          {recipe.sourceUrl && (
+            <a
+              href={recipe.sourceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-primary underline-offset-4 hover:underline"
+            >
+              <ExternalLink className="size-4" aria-hidden="true" />
+              Ver la receta original
+            </a>
+          )}
+        </footer>
       )}
 
-      {/* Warnings */}
       {recipe.warnings.length > 0 && (
-        <motion.aside
-          aria-label="Advertencias"
-          className="rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-700 p-5 space-y-2"
-          initial="hidden"
-          animate="visible"
-          custom={6}
-          variants={fadeUp}
+        <aside
+          aria-labelledby="warnings-heading"
+          className="space-y-2 rounded-xl border border-amber-300 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/40"
         >
-          <div className="flex items-center gap-2 font-semibold text-amber-800 dark:text-amber-300">
+          <h2
+            id="warnings-heading"
+            className="flex items-center gap-2 font-bold text-amber-900 dark:text-amber-200"
+          >
             <AlertTriangle className="size-5" aria-hidden="true" />
-            Advertencias
-          </div>
-          <ul className="space-y-1 text-base text-amber-900 dark:text-amber-200">
-            {recipe.warnings.map((w, i) => (
-              <li key={i}>{w}</li>
+            Revisa estos datos
+          </h2>
+          <ul className="list-disc space-y-1 pl-5 text-base text-amber-900 dark:text-amber-100">
+            {recipe.warnings.map((warning, i) => (
+              <li key={i}>{warning}</li>
             ))}
           </ul>
-        </motion.aside>
+        </aside>
       )}
     </article>
   );
 }
 
 function MetaTile({
-  icon,
+  icon: Icon,
   label,
   value,
-  subtitle,
+  hint,
 }: {
-  icon: React.ReactNode;
+  icon: typeof Clock;
   label: string;
   value: string;
-  subtitle?: string;
+  hint?: string;
 }) {
   return (
-    <div className="rounded-xl bg-muted p-4 text-center space-y-1">
-      <div className="flex justify-center text-primary">{icon}</div>
-      <p className="text-sm text-muted-foreground">{label}</p>
-      <p className="text-base font-semibold">{value}</p>
-      {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
+    <div className="rounded-xl bg-muted px-4 py-3">
+      <dt className="flex items-center gap-1.5 text-sm text-muted-foreground">
+        <Icon className="size-4 text-primary" aria-hidden="true" />
+        {label}
+      </dt>
+      <dd className="mt-0.5 text-base font-bold">
+        {value}
+        {hint && (
+          <span className="block text-xs font-normal text-muted-foreground">{hint}</span>
+        )}
+      </dd>
     </div>
   );
 }

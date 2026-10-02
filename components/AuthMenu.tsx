@@ -45,9 +45,9 @@ export async function AuthMenu() {
           {user.name || user.email}
         </span>
       </div>
-      <Button asChild size="icon-sm" variant="ghost" aria-label="Cerrar sesión">
+      <Button asChild size="icon-lg" variant="ghost" aria-label="Cerrar sesión">
         <a href="/api/auth/logout">
-          <LogOut className="size-4" aria-hidden="true" />
+          <LogOut className="size-5" aria-hidden="true" />
         </a>
       </Button>
     </div>

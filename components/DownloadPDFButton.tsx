@@ -3,46 +3,54 @@
 import dynamic from "next/dynamic";
 import { FileDown, Loader2 } from "lucide-react";
 import { RecipePDF } from "@/components/RecipePDF";
+import { buttonVariants } from "@/components/ui/button";
 import type { Recipe } from "@/lib/schema";
+import { cn } from "@/lib/utils";
 
+// @react-pdf/renderer is browser-only and heavy: load it on the client, on demand.
 const PDFDownloadLink = dynamic(
   () => import("@react-pdf/renderer").then((mod) => mod.PDFDownloadLink),
-  { ssr: false, loading: () => null }
+  { ssr: false, loading: () => <PDFButtonLabel loading /> },
 );
 
-export function DownloadPDFButton({ recipe }: { recipe: Recipe }) {
-  const filename = `${recipe.title
+function slugify(title: string): string {
+  const slug = title
     .toLowerCase()
-    .replace(/[^a-z0-9áéíóúüñ\s]/gi, "")
-    .trim()
-    .replace(/\s+/g, "-")}.pdf`;
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return slug || "receta";
+}
 
+function PDFButtonLabel({ loading }: { loading: boolean }) {
+  return (
+    <span
+      className={cn(
+        buttonVariants({ variant: "outline", size: "lg" }),
+        "max-sm:size-11 max-sm:px-0",
+        loading && "cursor-wait opacity-70",
+      )}
+    >
+      {loading ? (
+        <Loader2 className="animate-spin" aria-hidden="true" />
+      ) : (
+        <FileDown aria-hidden="true" />
+      )}
+      <span className="max-sm:sr-only">Descargar PDF</span>
+    </span>
+  );
+}
+
+export function DownloadPDFButton({ recipe }: { recipe: Recipe }) {
   return (
     <PDFDownloadLink
       document={<RecipePDF recipe={recipe} />}
-      fileName={filename}
+      fileName={`${slugify(recipe.title)}.pdf`}
       style={{ textDecoration: "none" }}
+      className="rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
-      {({ loading }: { loading: boolean }) => (
-        <span
-          className={[
-            "inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all",
-            "border border-input bg-background shadow-sm",
-            "hover:bg-accent hover:text-accent-foreground",
-            loading
-              ? "cursor-wait opacity-70"
-              : "cursor-pointer",
-          ].join(" ")}
-          aria-label={loading ? "Generando PDF…" : "Descargar receta en PDF"}
-        >
-          {loading ? (
-            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-          ) : (
-            <FileDown className="size-4" aria-hidden="true" />
-          )}
-          {loading ? "Generando…" : "Descargar PDF"}
-        </span>
-      )}
+      {({ loading }: { loading: boolean }) => <PDFButtonLabel loading={loading} />}
     </PDFDownloadLink>
   );
 }

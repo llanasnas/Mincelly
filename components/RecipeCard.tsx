@@ -1,98 +1,99 @@
-"use client";
-
 import Link from "next/link";
 import Image from "next/image";
-import { motion } from "framer-motion";
-import { Clock, UtensilsCrossed, ListChecks, ChefHat } from "lucide-react";
-import type { RecipeRow } from "@/lib/db";
+import { Clock, Flame, UtensilsCrossed, ListChecks } from "lucide-react";
+import { RECIPE_TYPE_LABELS } from "@/lib/categories";
+import type { RecipeSummary } from "@/lib/db";
+
+const DATE_FORMAT = new Intl.DateTimeFormat("es-ES", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+});
 
 interface RecipeCardProps {
-  recipe: Pick<
-    RecipeRow,
-    "id" | "title" | "confidence" | "created_at" | "image_url" | "type" | "data"
-  >;
-  index?: number;
+  recipe: RecipeSummary;
+  /** Set on the first cards so their images load eagerly (they are the LCP candidates). */
+  priority?: boolean;
 }
 
-export function RecipeCard({ recipe, index = 0 }: RecipeCardProps) {
-  const date = new Date(recipe.created_at).toLocaleDateString("es-ES", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-
-  const ingredientCount = recipe.data?.ingredients?.length ?? 0;
-  const stepCount = recipe.data?.steps?.length ?? 0;
-  const imageUrl = recipe.image_url ?? recipe.data?.imageUrl ?? null;
-
+export function RecipeCard({ recipe, priority = false }: RecipeCardProps) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{
-        duration: 0.35,
-        delay: index * 0.07,
-        type: "spring",
-        stiffness: 280,
-        damping: 22,
-      }}
-      whileHover={{ y: -5 }}
-      whileTap={{ scale: 0.98 }}
-      style={{ willChange: "transform" }}
+    <Link
+      href={`/recipes/${recipe.id}`}
+      className="group block rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     >
-      <Link
-        href={`/recipes/${recipe.id}`}
-        className="block group outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-2xl"
-      >
-        <article className="h-full cursor-pointer rounded-2xl border border-border bg-card overflow-hidden transition-all duration-250 hover:shadow-xl hover:shadow-primary/10 hover:border-primary/30 group-focus-visible:ring-2 group-focus-visible:ring-ring">
-          <div className="relative aspect-[16/9] w-full overflow-hidden">
-            {imageUrl ? (
-              <Image
-                src={imageUrl}
-                alt={recipe.title}
-                fill
-                className="object-cover transition-transform duration-300 group-hover:scale-105"
-                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-              />
-            ) : (
-              <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-primary/10 to-accent/10">
-                <ChefHat className="size-12 text-primary/30" />
-              </div>
+      <article className="h-full overflow-hidden rounded-2xl border border-border bg-card transition-[border-color,box-shadow,transform] duration-200 ease-out group-hover:-translate-y-0.5 group-hover:border-primary/30 group-hover:shadow-lg group-hover:shadow-foreground/5 group-active:scale-[0.99]">
+        {/* Most recipes have no photo: skip the media block instead of showing a placeholder. */}
+        {recipe.image_url && (
+          <div className="relative aspect-[16/9] w-full overflow-hidden bg-muted">
+            <Image
+              src={recipe.image_url}
+              alt=""
+              fill
+              priority={priority}
+              className="object-cover transition-transform duration-300 ease-out group-hover:scale-[1.03]"
+              sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 33vw"
+            />
+          </div>
+        )}
+
+        <div className="space-y-3 p-4">
+          <h3 className="line-clamp-2 text-lg font-bold leading-snug transition-colors duration-200 group-hover:text-primary">
+            {recipe.title}
+          </h3>
+
+          <dl className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-muted-foreground">
+            <Stat icon={UtensilsCrossed} label="Ingredientes">
+              {recipe.ingredient_count} ingr.
+            </Stat>
+            <Stat icon={ListChecks} label="Pasos">
+              {recipe.step_count} {recipe.step_count === 1 ? "paso" : "pasos"}
+            </Stat>
+            {recipe.total_time && (
+              <Stat icon={Clock} label="Tiempo total">
+                {recipe.total_time}
+              </Stat>
             )}
+            {recipe.calories !== null && (
+              <Stat icon={Flame} label="Calorías por 100 g">
+                {Math.round(recipe.calories)} kcal
+              </Stat>
+            )}
+          </dl>
+
+          <p className="text-xs text-muted-foreground">
             {recipe.type && (
-              <span className="absolute top-3 left-3 inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-background/90 backdrop-blur-sm text-foreground shadow-sm">
-                {recipe.type}
-              </span>
+              <>
+                <span className="font-bold text-foreground/80">
+                  {RECIPE_TYPE_LABELS[recipe.type]}
+                </span>
+                {" · "}
+              </>
             )}
-          </div>
+            <time dateTime={recipe.created_at}>
+              {DATE_FORMAT.format(new Date(recipe.created_at))}
+            </time>
+          </p>
+        </div>
+      </article>
+    </Link>
+  );
+}
 
-          <div className="p-4 space-y-3">
-            <h3 className="font-display text-lg font-semibold leading-tight line-clamp-2 group-hover:text-primary transition-colors duration-200">
-              {recipe.title}
-            </h3>
-
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              <div className="flex items-center gap-1.5">
-                <Clock className="size-4 shrink-0" aria-hidden="true" />
-                <time dateTime={recipe.created_at}>{date}</time>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-4 pt-2 border-t border-border">
-              <div className="flex items-center gap-1.5 text-sm">
-                <UtensilsCrossed className="size-4 text-primary/60" aria-hidden="true" />
-                <span className="font-medium">{ingredientCount}</span>
-                <span className="text-muted-foreground">ingred.</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-sm">
-                <ListChecks className="size-4 text-accent/70" aria-hidden="true" />
-                <span className="font-medium">{stepCount}</span>
-                <span className="text-muted-foreground">pasos</span>
-              </div>
-            </div>
-          </div>
-        </article>
-      </Link>
-    </motion.div>
+function Stat({
+  icon: Icon,
+  label,
+  children,
+}: {
+  icon: typeof Clock;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <dt className="sr-only">{label}</dt>
+      <Icon className="size-4 shrink-0 text-primary/70" aria-hidden="true" />
+      <dd className="tabular-nums">{children}</dd>
+    </div>
   );
 }
