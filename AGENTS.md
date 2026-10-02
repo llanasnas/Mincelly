@@ -6,76 +6,106 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 ## Recipe Intelligence Engine (Mincely)
 
-AI-powered recipe parser. Converts text/docx/images/YouTube → structured recipe data.
+AI-powered recipe parser. Converts text / docx / pdf / images / YouTube → structured recipe data,
+with nutrition computed ingredient by ingredient from USDA data.
 
 ## Commands
 
 - `pnpm dev` — dev server (port 3000)
-- `pnpm build` — production build **run before PR**
+- `pnpm typecheck` — `tsc --noEmit`
 - `pnpm lint` — ESLint
-- `pnpm db:migrate` — run SQL migrations to Neon
+- `pnpm test` — Vitest (unit + DB integration on PGlite; no network, no services)
+- `pnpm build` — production build **run before PR**
+- `pnpm db:migrate` — apply pending SQL migrations to Neon
+- `pnpm nutrition:build-reference` — regenerate `lib/nutrition/reference-data.ts` from USDA
+
+CI runs typecheck, lint, test and build. Package manager is **pnpm** (Vercel builds with it too).
 
 ## Stack
 
-- **Next.js 15** App Router
+- **Next.js 16** App Router (Turbopack), React 19
 - **TypeScript strict** enabled
 - **Zod 4** for validation (always use `safeParse()` on LLM outputs)
-- **Tailwind CSS 4** + shadcn/ui (theme: new-york)
-- **Framer Motion** for animations
+- **Tailwind CSS 4** + shadcn/ui
+- **Framer Motion** — only where motion conveys state; no page-load choreography
 - **@neondatabase/serverless** — direct SQL, no ORM
-- **Mammoth.js** for docx — route handlers MUST use `export const runtime = 'nodejs'`
+- **Mammoth.js** for docx, **unpdf** for pdf — route handlers MUST use `export const runtime = 'nodejs'`
 
 ## Architecture
 
-- `/lib/process-recipe.ts` — main AI orchestrator
+- `/lib/process-recipe.ts` — main orchestrator: sanitise → LLM parse → validate → nutrition
+- `/lib/llm-output.ts` — turns raw LLM text into something Zod can validate
 - `/lib/schema.ts` — Zod schemas = data model source of truth
-- `/lib/llm/` — LLM abstraction layer
-- `/lib/extractors/` — one file per input type (text, docx, image, youtube)
-- `/lib/nutrition/usda.ts` — USDA FoodData Central API client
-- `/lib/nutrition/parser.ts` — quantity parser (normalizes "1500 gr" → {qty, unit})
+- `/lib/llm/` — LLM abstraction layer (do not change without review)
+- `/lib/extractors/` — one file per input type (text, docx, pdf, image, youtube); `index.ts` routes
+- `/lib/nutrition/engine.ts` — nutrition engine (weights → per-ingredient profile → aggregate → report)
+- `/lib/nutrition/usda.ts` — USDA FoodData Central client + candidate ranking
+- `/lib/nutrition/reference-data.ts` — GENERATED snapshot of pantry staples; never edit by hand
+- `/lib/nutrition/parser.ts` — quantities and units → grams
+- `/lib/db.ts` — all SQL
+- `/lib/api.ts` — API error shape + rate limiting helper
 - `/prompts/parse-recipe.md` — system prompt (changes here affect quality)
+- `/proxy.ts` — auth gate (Next 16 name for middleware)
 
 ## LLM + Nutrition Config
 
 `LLM_PROVIDER` in `.env.local`:
 - `anthropic` (default) — model: `claude-haiku-4-5-20251001`
+- `openai` — model: `gpt-4.1-mini`
 - `ollama` — model: `qwen2.5:7b` (better JSON following than llama3.2)
 - `ollama` vision — model: `llama3.2-vision:11b` or `llava:13b`
 - `none` — heuristic parser (requires "Ingredientes" / "Preparación" sections)
 
-`USDA_API_KEY` (optional): Free API key from https://fdc.nal.usda.gov/api-key-signup
-- When configured: real nutrition data from USDA Foundation/SR Legacy foods
-- When missing: falls back to LLM estimation
+`ENABLED_PROVIDERS=anthropic,openai` shows a provider picker; the picked provider is used for
+parsing, image OCR and nutrition estimates alike.
+
+Nutrition resolves each ingredient through three tiers, most trustworthy first:
+1. bundled USDA snapshot (`reference-data.ts`) — exact match only, no network
+2. live USDA search — needs `USDA_API_KEY` (free: https://fdc.nal.usda.gov/api-key-signup)
+3. per-ingredient LLM estimate — one batched call for whatever is left
+
+The LLM's whole-dish `nutrition` block is only a cross-check and last-resort fallback.
 
 ## Quantity Format
 
-The parser normalizes ingredients automatically:
-- `"1500 gr"` → `{ quantity: "1500", unit: "g" }`
-- `"2 cups"` → `{ quantity: "2", unit: "cup" }`
-- `"1/2 tbsp"` → `{ quantity: "1/2", unit: "tbsp" }`
+Quantity and unit are separate fields. A unit glued to the quantity is split out:
+- `"1500 gr"` → `{ quantity: "1500", unit: "g" }` (metric units are normalised)
+- `"2 tazas"` → `{ quantity: "2", unit: "tazas" }` (other units keep the recipe's wording)
+
+For conversion, units are canonicalised internally (`canonicalUnit`): "cucharadas" → `tbsp`, etc.
+Each ingredient may also carry `nameEn` (English name for database lookups) and `grams`
+(estimated weight) — hints produced by the LLM; clear them when the user edits the ingredient.
 
 ## Error Handling
 
-- NEVER use `JSON.parse()` on LLM output — always `safeParse()`
-- LLM may wrap JSON in markdown (` ```json ... ``` `) — regex in `process-recipe.ts` handles this
+- NEVER use `JSON.parse()` directly on LLM output — use `parseLLMJson()` then `safeParse()`
+- LLM may wrap JSON in markdown (` ```json ... ``` `) — `extractJSON` in `llm-output.ts` handles this
 - Throw `RecipeProcessingError` on validation failure — NO silent fallback
+- `RecipeProcessingError(code, message, detail?)`: `message` is user-facing (Spanish) and includes
+  the provider name in brackets; `detail` is technical, logged server-side, never sent in production
 - Use `RecipeErrorCode` from `/lib/errors.ts`
-- Errors MUST include provider name
+- API routes respond with `{ errorCode, error }` via `errorResponse()` from `/lib/api.ts`
 
 ## Known Gotchas
 
-- **Mammoth + Turbopack breaks**: add `experimental: { turbo: false }` in `next.config.ts`
-- **Vercel Hobby timeout**: 10s — don't process docx >2MB without background job
+- **Vercel body limit**: requests over 4.5 MB are rejected before reaching the function — the client
+  downscales photos (`lib/image-resize.ts`) and caps documents at 4 MB
+- **Docx with the recipe as an image**: common (OneNote / scanner exports). `extractors/docx.ts`
+  OCRs embedded images when the document has little text
+- **USDA search is not an ingredient matcher**: never take the first hit — go through `pickBestMatch`
+- **Turbopack dev on Windows** can leak `postcss.js` worker processes after many edits; if memory
+  climbs, restart `pnpm dev`
 - **Neon cold start**: ~500ms delay first query after inactivity (free tier)
+- **Categories live in three places** (`lib/categories.ts`, SQL seeds, the prompt) — a test enforces
+  that they match
 - **TypeScript strict**: full strict mode enabled — fix all errors before committing
 
-## Phase 2 (skip in MVP)
+## Not built yet
 
-- Auth (Better Auth)
 - Langfuse observability
 - Evals dataset
-- OpenAI/Ollama production
 - pgvector semantic search
+- TikTok / Instagram import
 
 <!-- CODEGRAPH_START -->
 ## CodeGraph
