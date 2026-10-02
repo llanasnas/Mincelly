@@ -1,5 +1,5 @@
 import { neon, type NeonQueryFunction } from '@neondatabase/serverless'
-import type { Recipe } from './schema'
+import { RecipeSchema, type Recipe } from './schema'
 import type { RecipeType } from './categories'
 
 // Lazy singleton — connection is created on first DB call, not at module load.
@@ -62,7 +62,15 @@ function toIso(value: unknown): string {
 }
 
 function toRecipeRow(row: Record<string, unknown>): RecipeRow {
-  return { ...(row as RecipeRow), created_at: toIso(row.created_at) }
+  // Documents saved by older versions can lack fields added since (categories,
+  // tags…). Re-validating fills in the schema defaults, so callers always get a
+  // complete Recipe; a document that no longer validates is passed through as it is.
+  const parsed = RecipeSchema.safeParse(row.data)
+  return {
+    ...(row as RecipeRow),
+    data: parsed.success ? parsed.data : (row.data as Recipe),
+    created_at: toIso(row.created_at),
+  }
 }
 
 function normalizedIngredientNames(recipe: Recipe): string[] {

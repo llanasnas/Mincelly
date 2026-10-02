@@ -176,6 +176,29 @@ describe('deleteRecipe', () => {
 })
 
 describe('getRecipeById', () => {
+  // Rows written before `categories`, `tags` or `warnings` existed in the schema.
+  it('fills schema defaults into documents saved by older versions', async () => {
+    const legacy = { title: 'Receta antigua', ingredients: [{ name: 'Sal' }], steps: [{ order: 1, instruction: 'Mezclar' }] }
+    const { rows } = await pg.query<{ id: number }>(
+      `INSERT INTO recipes (title, data, confidence) VALUES ($1, $2::jsonb, 'high') RETURNING id`,
+      [legacy.title, JSON.stringify(legacy)],
+    )
+
+    const row = await getRecipeById(rows[0].id)
+
+    expect(row!.data).toMatchObject({ categories: [], tags: [], warnings: [], confidence: 'high' })
+  })
+
+  it('passes a document through untouched when it no longer validates', async () => {
+    const broken = { title: 'Rara', ingredients: 'no es una lista', steps: [] }
+    const { rows } = await pg.query<{ id: number }>(
+      `INSERT INTO recipes (title, data, confidence) VALUES ($1, $2::jsonb, 'low') RETURNING id`,
+      [broken.title, JSON.stringify(broken)],
+    )
+
+    expect((await getRecipeById(rows[0].id))!.data).toEqual(broken)
+  })
+
   it('treats malformed ids as not found instead of querying', async () => {
     expect(await getRecipeById(NaN)).toBeNull()
     expect(await getRecipeById(-1)).toBeNull()

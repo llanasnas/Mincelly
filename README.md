@@ -10,7 +10,7 @@
 [![Next.js](https://img.shields.io/badge/Next.js_16-black?logo=next.js)](https://nextjs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS_4-38bdf8?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
-[![Tests](https://img.shields.io/badge/tests-419_passing-2ea44f)](#testing)
+[![Tests](https://img.shields.io/badge/tests-421_passing-2ea44f)](#testing)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 </div>
@@ -164,7 +164,7 @@ Everything is configured through `.env.local`; [`.env.example`](.env.example) do
 pnpm test
 ```
 
-419 tests, no network and no external services:
+421 tests, no network and no external services:
 
 - **Unit** — quantity and unit parsing, the USDA candidate ranking (against recorded real API responses), the nutrition engine's aggregation and yield maths, LLM output normalisation, schema validation, auth tokens, rate limiting, extractors.
 - **Integration** — `lib/db.ts` runs against a real Postgres compiled to WASM ([PGlite](https://pglite.dev)) with the project's own migrations applied, so the SQL is actually executed.
