@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Image,
 } from "@react-pdf/renderer";
+import { RECIPE_TYPE_LABELS } from "@/lib/categories";
 import type { Recipe, Nutrition } from "@/lib/schema";
 
 // Mincely palette (OKLCH → hex)
@@ -385,9 +386,7 @@ export function RecipePDF({ recipe }: { recipe: Recipe }) {
             )}
             {recipe.type && (
               <View style={s.headerPill}>
-                <Text style={s.headerPillText}>
-                  {recipe.type.charAt(0).toUpperCase() + recipe.type.slice(1)}
-                </Text>
+                <Text style={s.headerPillText}>{RECIPE_TYPE_LABELS[recipe.type]}</Text>
               </View>
             )}
           </View>
@@ -401,6 +400,8 @@ export function RecipePDF({ recipe }: { recipe: Recipe }) {
 
           {/* Hero image */}
           {hasImage && (
+            // react-pdf's Image is a PDF primitive, not an <img>: it has no alt attribute.
+            // eslint-disable-next-line jsx-a11y/alt-text
             <Image src={recipe.imageUrl!} style={s.heroImage} />
           )}
 
@@ -511,7 +512,7 @@ export function RecipePDF({ recipe }: { recipe: Recipe }) {
               <View style={s.nutritionTable}>
                 <View style={s.nutritionTableHead}>
                   <Text style={s.nutritionHeadText}>Nutriente</Text>
-                  <Text style={s.nutritionHeadText}>Por ración</Text>
+                  <Text style={s.nutritionHeadText}>Por 100 g</Text>
                 </View>
                 {nutritionData.map(({ label, value }, i) => (
                   <View key={label} style={[s.nutritionRow, i % 2 === 1 ? s.nutritionRowAlt : {}]}>

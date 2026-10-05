@@ -11,10 +11,7 @@ interface RecipeEditFormProps {
   initialRecipe: Recipe;
 }
 
-export function RecipeEditForm({
-  recipeId,
-  initialRecipe,
-}: RecipeEditFormProps) {
+export function RecipeEditForm({ recipeId, initialRecipe }: RecipeEditFormProps) {
   const router = useRouter();
   const [isSaving, setIsSaving] = useState(false);
 
@@ -27,19 +24,19 @@ export function RecipeEditForm({
         body: JSON.stringify(edited),
       });
 
-      const data = (await res.json()) as { error?: string };
-
       if (!res.ok) {
-        toast.error(data.error ?? "Error al guardar los cambios");
+        const data = (await res.json().catch(() => null)) as { error?: string } | null;
+        toast.error(data?.error ?? "No se pudieron guardar los cambios.");
+        setIsSaving(false);
         return;
       }
 
-      toast.success("Receta actualizada");
+      toast.success("Receta actualizada.");
+      // isSaving stays true through the navigation so the unsaved-changes guard keeps quiet.
       router.push(`/recipes/${recipeId}`);
       router.refresh();
     } catch {
-      toast.error("Error de red al guardar");
-    } finally {
+      toast.error("Error de red al guardar.");
       setIsSaving(false);
     }
   }

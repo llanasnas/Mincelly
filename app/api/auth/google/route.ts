@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import {
   getGoogleClientId,
   getRedirectUri,
+  safeReturnPath,
 } from "@/lib/auth/config"
 import {
   OAUTH_STATE_COOKIE,
@@ -12,7 +13,7 @@ export const runtime = "nodejs"
 
 export async function GET(req: Request) {
   const url = new URL(req.url)
-  const returnTo = url.searchParams.get("returnTo") || "/"
+  const returnTo = safeReturnPath(url.searchParams.get("returnTo"))
 
   let clientId: string
   let redirectUri: string

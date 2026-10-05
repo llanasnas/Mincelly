@@ -3,12 +3,24 @@ import { z } from 'zod'
 // RecipeType is used externally; re-export from categories to keep schema self-contained
 export type { RecipeType } from './categories'
 
+// For optional numeric hints coming from an LLM: a bad value (0, negative, "n/a")
+// is dropped instead of failing validation of the whole recipe.
+const optionalPositive = z.preprocess((val) => {
+  if (val === null || val === undefined || val === '') return undefined
+  const n = Number(val)
+  return Number.isFinite(n) && n > 0 ? n : undefined
+}, z.number().positive().optional())
+
 export const IngredientSchema = z.object({
   name: z.string(),
   quantity: z.string().optional(),
   unit: z.string().optional(),
   notes: z.string().optional(),
   normalized: z.string().optional(),
+  /** Common English name of the food — the query used against nutrition databases. */
+  nameEn: z.string().optional(),
+  /** Estimated weight in grams of the stated quantity (edible portion). */
+  grams: optionalPositive,
 })
 
 export const StepSchema = z.object({
@@ -39,6 +51,35 @@ export const NutritionSchema = z.object({
   water: coerceNum.optional(),
   dryExtract: coerceNum.optional(),
   sodium: coerceNum.optional(),
+})
+
+/** How the nutrition values were obtained — shown to the user so they know how far to trust them. */
+export const NutritionMetaSchema = z.object({
+  /**
+   * `usda`: every weighed ingredient matched USDA data.
+   * `mixed`: some ingredients fell back to an LLM estimate.
+   * `estimated`: no database data — values are an LLM estimate.
+   */
+  source: z.enum(['usda', 'mixed', 'estimated']),
+  /** Share (0–1) of the recipe's weight whose nutrients come from USDA data. */
+  coverage: z.number().min(0).max(1),
+  /** Weight in grams of the finished dish, after cooking gains/losses. */
+  totalWeight: z.number().positive().optional(),
+  /** Per-ingredient contribution, in recipe order. */
+  breakdown: z
+    .array(
+      z.object({
+        name: z.string(),
+        grams: z.number().nonnegative().optional(),
+        calories: z.number().nonnegative().optional(),
+        source: z.enum(['reference', 'usda', 'llm']).optional(),
+        /** Name of the matched database entry. */
+        match: z.string().optional(),
+      }),
+    )
+    .optional(),
+  /** User-facing remarks about gaps in the calculation. */
+  notes: z.array(z.string()).optional(),
 })
 
 const servingsCoerce = z.preprocess((val) => {
@@ -84,7 +125,15 @@ export const RecipeSchema = z.object({
   imageUrl: z.string().url().optional(),
   confidence: z.enum(['high', 'medium', 'low']).default('high'),
   warnings: z.array(z.string()).default([]),
+  /** Per 100 g of finished dish. */
   nutrition: NutritionSchema.optional(),
+  nutritionMeta: NutritionMetaSchema.optional(),
+  /**
+   * Finished weight ÷ summed raw ingredient weight. Below 1 when water cooks off
+   * (baking, reductions), above 1 when the dish absorbs water that is not listed
+   * as an ingredient (pasta, rice).
+   */
+  cookingYield: optionalPositive,
   estimatedCost: z.coerce.number().nonnegative().optional(),
 })
 
@@ -97,5 +146,6 @@ export const RecipeSaveSchema = RecipeSchema.extend({
 export type Ingredient = z.infer<typeof IngredientSchema>
 export type Step = z.infer<typeof StepSchema>
 export type Nutrition = z.infer<typeof NutritionSchema>
+export type NutritionMeta = z.infer<typeof NutritionMetaSchema>
 export type Recipe = z.infer<typeof RecipeSchema>
 export type RecipeSave = z.infer<typeof RecipeSaveSchema>

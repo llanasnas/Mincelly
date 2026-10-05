@@ -7,7 +7,7 @@ const securityHeaders = [
   { key: "X-Frame-Options", value: "SAMEORIGIN" },
   // Control referrer information
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-  // Restrict browser feature access
+  // Restrict browser feature access (the microphone is used for voice dictation)
   { key: "Permissions-Policy", value: "camera=(), microphone=(self), geolocation=()" },
   // Enforce HTTPS in production (2 years, preload-ready)
   ...(process.env.NODE_ENV === "production"
@@ -16,6 +16,10 @@ const securityHeaders = [
 ]
 
 const nextConfig: NextConfig = {
+  poweredByHeader: false,
+  // Pin the workspace root to this project. Without it, a stray lockfile higher
+  // up the directory tree makes Next.js pick the wrong root.
+  turbopack: { root: __dirname },
   images: {
     remotePatterns: [
       {

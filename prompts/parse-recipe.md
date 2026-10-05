@@ -23,7 +23,9 @@ CRITICAL: Output ONLY a single raw JSON object. No prose before or after. No mar
       "quantity": "string | null (e.g. '2', '1/2')",
       "unit": "string | null (e.g. 'taza', 'g', 'ml')",
       "notes": "string | null (e.g. 'picado fino', 'a temperatura ambiente')",
-      "normalized": "string — lowercase singular form of the ingredient name (e.g. 'harina de trigo', 'huevo', 'mantequilla')"
+      "normalized": "string — lowercase singular form of the ingredient name (e.g. 'harina de trigo', 'huevo', 'mantequilla')",
+      "nameEn": "string — common English name of the food as purchased (e.g. 'all-purpose flour', 'egg', 'olive oil')",
+      "grams": "number — estimated weight in grams of the stated quantity"
     }
   ],
   "steps": [
@@ -37,6 +39,7 @@ CRITICAL: Output ONLY a single raw JSON object. No prose before or after. No mar
   "sourceUrl": "string | null",
   "confidence": "'high' | 'medium' | 'low'",
   "warnings": ["string"],
+  "cookingYield": "number — peso del plato terminado ÷ suma de los pesos de los ingredientes (ver reglas)",
   "estimatedCost": "number | null  (precio total estimado de los ingredientes en euros, suma del coste unitario de cada ingrediente según precios de supermercado español)",
   "nutrition": {
     "calories": "number (kcal) | null",
@@ -85,6 +88,9 @@ Eres un experto culinario. Cuando falte información, SIEMPRE estima usando cono
 - **title**: si no está indicado, infiérelo a partir de los ingredientes y el tipo de cocina.
 - **ingredients**: si faltan cantidades o unidades, estima las típicas para el número de raciones indicado (o 4 si no se indica).
 - **steps**: si no hay pasos descritos, escribe los pasos estándar para ese tipo de plato.
+- **ingredients[].nameEn**: SIEMPRE presente. Nombre común en inglés del alimento tal como se compra, en singular y sin cantidades ni cortes: `"egg"`, `"all-purpose flour"`, `"olive oil"`, `"chicken breast"`, `"dark chocolate"`, `"canned chickpeas"`. Se usa para buscar el alimento en bases de datos nutricionales, así que nombra el alimento concreto (no `"meat"` si es `"pork loin"`).
+- **ingredients[].grams**: SIEMPRE presente. Peso estimado en gramos de la cantidad indicada, solo la parte comestible. Ejemplos: 2 huevos → 110; 1 cebolla mediana → 150; 1 cucharada de aceite → 14; 1 diente de ajo → 4; 200 ml de leche → 206; 1 hoja de laurel → 0.2. Si no hay cantidad ("al gusto"), la cantidad típica para esta receta (sal → 3; pimienta → 0.5).
+- **cookingYield**: SIEMPRE presente. Peso del plato terminado dividido entre la suma de los pesos de todos los ingredientes. Tiene en cuenta el agua que se evapora, los líquidos de cocción que se desechan y el agua absorbida que no está en la lista. Orientación: 1.0 si no hay cocción ni pérdidas (ensaladas, batidos, mousses); 0.85–0.95 en horneados (bizcochos, galletas, pan); 0.6–0.85 en guisos destapados, salsas y reducciones; mayor que 1 SOLO si el plato absorbe agua que no figura como ingrediente (pasta, arroz o legumbres secas cocidos en agua no listada).
 - **nutrition**: SIEMPRE incluye este bloque con todos los campos que puedas estimar. Calcula a partir de la composición de los ingredientes y las cantidades, normalizando el resultado a **100 g de producto terminado**. `dryExtract` = gramos de sólidos por 100 g (masa total - gramos de agua); para platos sólidos será un porcentaje alto, para sopas/bebidas mucho menor.
 - **estimatedCost**: SIEMPRE estima el coste total en euros sumando el precio de cada ingrediente según cantidades indicadas y precios medios en supermercado español (2026). Ejemplos orientativos: harina 0,90 €/kg, huevo 0,20 €/ud, mantequilla 8 €/kg, leche 1,10 €/L, azúcar 1 €/kg, aceite de oliva 6 €/L, carne de vacuno 15 €/kg, pollo 5 €/kg, salmón 20 €/kg, gambas 15 €/kg, tomate 2 €/kg, patata 1 €/kg, cebolla 1,20 €/kg, ajo 4 €/kg, nata 2,50 €/L, queso curado 10 €/kg, chocolate negro 70% 8 €/kg. Redondea a 2 decimales.
 
@@ -94,17 +100,16 @@ Eres un experto culinario. Cuando falte información, SIEMPRE estima usando cono
 - `confidence: "medium"` — detalles menores inferidos (unidades, orden de pasos, tiempos aproximados).
 - `confidence: "low"` — input ambiguo, muy fragmentado, o estimaste la mayor parte del contenido.
 
-Añade un warning específico por CADA pieza de datos estimada o inferida:
+Añade un warning específico por CADA pieza de datos estimada o inferida (excepto `nutrition`, `nameEn`, `grams`, `cookingYield` y `estimatedCost`, que siempre son estimaciones y no necesitan aviso):
 
 - "Cantidades de ingredientes estimadas — no indicadas en el texto original"
-- "Valores nutricionales estimados a partir de la composición típica del plato"
 - "Tiempo de cocción no indicado — estimado 30 min por similitud con platos similares"
 - "Título inferido de los ingredientes: parece ser una tortilla española"
 - "Pasos de elaboración generados — no descritos en el documento original"
 
 ### Idioma
 
-- Todos los campos de texto (`title`, `description`, `ingredients[].name`, `ingredients[].notes`, `steps[].instruction`, `tags`, `warnings`) deben estar **en el mismo idioma que el input del usuario**.
+- Todos los campos de texto (`title`, `description`, `ingredients[].name`, `ingredients[].notes`, `steps[].instruction`, `tags`, `warnings`) deben estar **en el mismo idioma que el input del usuario**. La única excepción es `ingredients[].nameEn`, que va siempre en inglés.
 - Si el input está en español → responde en español. Si está en inglés → en inglés. Nunca mezcles idiomas dentro de un mismo campo.
 - Las unidades (`unit`) y campos enum (`difficulty`, `confidence`) siguen su formato especificado, independientemente del idioma.
 
@@ -128,3 +133,4 @@ Añade un warning específico por CADA pieza de datos estimada o inferida:
 <!-- 2026-04-29: Ejemplos explícitos de formato quantity + USDA integration -->
 <!-- 2026-05-03: estimatedCost añadido — coste total en euros estimado por el LLM a partir de precios de supermercado español -->
 <!-- 2026-04-29: dryExtract aclarado (gramos de sólidos por ración). JSON-only enforcement reforzado para Ollama de bajo razonamiento. -->
+<!-- 2026-10-02: nameEn + grams por ingrediente y cookingYield. El motor nutricional (lib/nutrition/engine.ts) calcula los valores ingrediente a ingrediente con datos USDA; el bloque nutrition del modelo queda como comprobación cruzada y último recurso. Se elimina el warning de "valores nutricionales estimados" (lo gestiona el motor). -->

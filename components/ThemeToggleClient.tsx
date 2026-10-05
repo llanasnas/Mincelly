@@ -7,17 +7,15 @@ import { Button } from "@/components/ui/button";
 export function ThemeToggleClient() {
   const { resolvedTheme, setTheme } = useTheme();
 
+  // The label is deliberately theme-independent: the theme is only known on the
+  // client, so a label that named it would not match the server-rendered HTML.
   return (
     <Button
       variant="ghost"
       size="icon"
-      aria-label={
-        resolvedTheme === "dark"
-          ? "Cambiar a modo claro"
-          : "Cambiar a modo oscuro"
-      }
+      aria-label="Cambiar entre tema claro y oscuro"
       onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-      className="size-10 cursor-pointer"
+      className="size-11"
     >
       <Sun
         className="size-5 rotate-0 scale-100 transition-transform dark:-rotate-90 dark:scale-0"

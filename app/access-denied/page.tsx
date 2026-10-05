@@ -5,10 +5,19 @@ import { ShieldAlert } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ACCESS_DENIED_COOKIE } from "@/lib/auth/session"
 
+// A tampered cookie can hold an invalid escape sequence, which makes decodeURIComponent throw.
+function decodeCookie(value: string | undefined): string | null {
+  if (!value) return null
+  try {
+    return decodeURIComponent(value)
+  } catch {
+    return null
+  }
+}
+
 export default async function AccessDeniedPage() {
   const store = await cookies()
-  const attempted = store.get(ACCESS_DENIED_COOKIE)?.value
-  const email = attempted ? decodeURIComponent(attempted) : null
+  const email = decodeCookie(store.get(ACCESS_DENIED_COOKIE)?.value)
 
   return (
     <main className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center px-4 py-12">

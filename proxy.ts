@@ -11,6 +11,7 @@ const PROTECTED_PAGE_EXACT = new Set(["/"])
 
 const PROTECTED_API_PREFIXES = [
   "/api/process",
+  "/api/nutrition",
   "/api/recipes",
   "/api/upload-image",
   "/api/categories",
@@ -79,6 +80,7 @@ export const config = {
     "/",
     "/recipes/:path*",
     "/api/process/:path*",
+    "/api/nutrition/:path*",
     "/api/recipes/:path*",
     "/api/upload-image/:path*",
     "/api/categories/:path*",

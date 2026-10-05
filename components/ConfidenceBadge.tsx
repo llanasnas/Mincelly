@@ -1,5 +1,3 @@
-"use client";
-
 import type { Recipe } from "@/lib/schema";
 import { cn } from "@/lib/utils";
 

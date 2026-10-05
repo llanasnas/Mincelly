@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { RecipeSchema, RecipeSaveSchema, IngredientSchema, StepSchema, NutritionSchema } from '@/lib/schema'
+import {
+    RecipeSchema,
+    RecipeSaveSchema,
+    IngredientSchema,
+    StepSchema,
+    NutritionSchema,
+    NutritionMetaSchema,
+} from '@/lib/schema'
 
 const minimalRecipe = {
     title: 'Tortilla',
@@ -230,5 +237,63 @@ describe('NutritionSchema', () => {
     it('rejects negative values', () => {
         const result = NutritionSchema.safeParse({ calories: -10 })
         expect(result.success).toBe(false)
+    })
+})
+
+describe('nutrition hints from the LLM', () => {
+    it('keeps valid weight and English-name hints on ingredients', () => {
+        const result = IngredientSchema.safeParse({ name: 'Huevos', nameEn: 'egg', grams: '110' })
+        expect(result.success).toBe(true)
+        if (result.success) expect(result.data).toMatchObject({ nameEn: 'egg', grams: 110 })
+    })
+
+    // A wrong optional hint must never cost the user the whole recipe.
+    it.each([0, -5, 'n/a', '', null, NaN])('drops an unusable grams value (%s) instead of failing', (grams) => {
+        const result = IngredientSchema.safeParse({ name: 'Sal', grams })
+        expect(result.success).toBe(true)
+        if (result.success) expect(result.data.grams).toBeUndefined()
+    })
+
+    it('treats cookingYield the same way', () => {
+        const ok = RecipeSchema.safeParse({ ...minimalRecipe, cookingYield: '0.85' })
+        expect(ok.success && ok.data.cookingYield).toBe(0.85)
+
+        const bad = RecipeSchema.safeParse({ ...minimalRecipe, cookingYield: 'desconocido' })
+        expect(bad.success).toBe(true)
+        if (bad.success) expect(bad.data.cookingYield).toBeUndefined()
+    })
+})
+
+describe('NutritionMetaSchema', () => {
+    const meta = {
+        source: 'mixed',
+        coverage: 0.82,
+        totalWeight: 1240,
+        breakdown: [
+            { name: 'Harina', grams: 500, calories: 1820, source: 'reference', match: 'Wheat flour, white' },
+            { name: 'Isomalt', grams: 40, calories: 96, source: 'llm' },
+            { name: 'Canela' },
+        ],
+        notes: ['Sin coincidencia en USDA, estimados por IA: Isomalt.'],
+    }
+
+    it('accepts the metadata the engine produces', () => {
+        expect(NutritionMetaSchema.safeParse(meta).success).toBe(true)
+        expect(RecipeSaveSchema.safeParse({ ...minimalRecipe, nutritionMeta: meta }).success).toBe(true)
+    })
+
+    it('accepts the minimal form', () => {
+        expect(NutritionMetaSchema.safeParse({ source: 'estimated', coverage: 0 }).success).toBe(true)
+    })
+
+    it('rejects an unknown source or an out-of-range coverage', () => {
+        expect(NutritionMetaSchema.safeParse({ ...meta, source: 'made-up' }).success).toBe(false)
+        expect(NutritionMetaSchema.safeParse({ ...meta, coverage: 1.4 }).success).toBe(false)
+    })
+
+    it('is optional, so recipes saved before the engine existed still validate', () => {
+        const result = RecipeSaveSchema.safeParse(minimalRecipe)
+        expect(result.success).toBe(true)
+        if (result.success) expect(result.data.nutritionMeta).toBeUndefined()
     })
 })
