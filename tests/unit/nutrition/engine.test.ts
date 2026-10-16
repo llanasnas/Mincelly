@@ -157,19 +157,19 @@ describe('computeNutrition — resolution tiers', () => {
     const { nutrition, meta } = await computeNutrition(
       recipe([
         { name: 'Azúcar', quantity: '70', unit: 'g', normalized: 'azúcar' },
-        { name: 'Isomalt', quantity: '2', unit: 'sobres', nameEn: 'isomalt' },
+        { name: 'Aroma de rosas', quantity: '2', unit: 'sobres', nameEn: 'rose aroma' },
       ]),
     )
 
     expect(mocks.estimateIngredients).toHaveBeenCalledTimes(1)
     const [, pending] = mocks.estimateIngredients.mock.calls[0]
-    expect(pending).toEqual([{ index: 1, ingredient: expect.objectContaining({ name: 'Isomalt' }) }])
+    expect(pending).toEqual([{ index: 1, ingredient: expect.objectContaining({ name: 'Aroma de rosas' }) }])
 
     // 70 g sugar (387) + 30 g isomalt (400) over 100 g
     expect(nutrition!.calories).toBe(Math.round(70 * 3.87 + 30 * 4))
     expect(meta).toMatchObject({ source: 'mixed', coverage: 0.7 })
     expect(meta!.breakdown![1]).toMatchObject({ grams: 30, source: 'llm' })
-    expect(meta!.notes).toContain('Sin coincidencia en USDA, estimados por IA: Isomalt.')
+    expect(meta!.notes).toContain('Sin coincidencia en USDA, estimados por IA: Aroma de rosas.')
   })
 
   it('marks the result as estimated when nothing came from a database', async () => {
@@ -188,7 +188,7 @@ describe('computeNutrition — resolution tiers', () => {
     const { nutrition, meta } = await computeNutrition(
       recipe([
         { name: 'Azúcar', quantity: '100', unit: 'g', normalized: 'azúcar' },
-        { name: 'Isomalt', quantity: '50', unit: 'g' },
+        { name: 'Aroma de rosas', quantity: '50', unit: 'g' },
       ]),
     )
 
@@ -197,7 +197,7 @@ describe('computeNutrition — resolution tiers', () => {
     // counting its weight with no nutrients would dilute everything else.
     expect(nutrition!.calories).toBe(387)
     expect(meta!.coverage).toBeCloseTo(0.67, 2)
-    expect(meta!.notes).toContain('Sin datos nutricionales, no incluidos en el cálculo: Isomalt.')
+    expect(meta!.notes).toContain('Sin datos nutricionales, no incluidos en el cálculo: Aroma de rosas.')
   })
 
   it('survives a USDA outage by estimating instead, and reports it', async () => {
