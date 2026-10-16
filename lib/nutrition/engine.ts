@@ -3,6 +3,7 @@ import type { LLMProvider } from '../llm/types'
 import type { Ingredient, Nutrition, NutritionMeta, Recipe } from '../schema'
 import { estimateIngredients, type EstimateRequest } from './llm-estimates'
 import { measure } from './parser'
+import { findPastryProduct } from './pastry-products'
 import { findReferenceFood } from './reference-foods'
 import { translateIngredient } from './translate'
 import { NUTRIENT_KEYS, type NutrientKey, type ResolvedProfile } from './types'
@@ -94,6 +95,10 @@ async function resolveProfile(ing: Ingredient): Promise<ResolvedProfile | null> 
       fdcId: reference.fdcId,
     }
   }
+
+  // Trade names (couvertures, technical sugars, gelling agents) that USDA does not know.
+  const product = findPastryProduct(ing.normalized, ing.name, ing.nameEn)
+  if (product) return { per100g: product.per100g, source: 'reference', match: product.description }
 
   if (!isUSDAConfigured()) return null
 
